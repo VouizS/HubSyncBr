@@ -10,6 +10,7 @@ import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -43,6 +44,10 @@ public class MainActivity extends Activity {
     private static final int MUTED = Color.rgb(175, 180, 200);
     private static final int PURPLE = Color.rgb(139, 92, 246);
     private static final int BLUE = Color.rgb(63, 151, 255);
+    private static final int ICON_NORMAL = Color.rgb(167, 139, 250);
+    private static final int ICON_ACTIVE = Color.rgb(196, 181, 253);
+    private static final int ICON_BLUE = Color.rgb(56, 189, 248);
+    private static final int ICON_DISABLED = Color.rgb(107, 114, 128);
 
     private LinearLayout root;
     private LinearLayout shell;
@@ -137,7 +142,8 @@ public class MainActivity extends Activity {
         side.setPadding(dp(10), dp(8), dp(10), dp(8));
         side.setBackground(cardBg(Color.rgb(9, 13, 24), Color.rgb(26, 31, 48), dp(24), 1));
 
-        TextView logo = label("▶▶  HubSyncBr", 20, TEXT, true);
+        TextView logo = label("HubSyncBr", 20, TEXT, true);
+        setLeftIcon(logo, R.drawable.ic_hs_sync, ICON_ACTIVE, 30);
         logo.setPadding(dp(8), dp(10), dp(8), dp(4));
         side.addView(logo, new LinearLayout.LayoutParams(-1, dp(58)));
 
@@ -145,12 +151,12 @@ public class MainActivity extends Activity {
         sub.setPadding(dp(8), 0, dp(8), dp(10));
         side.addView(sub, new LinearLayout.LayoutParams(-1, dp(32)));
 
-        side.addView(navButton("⌂  Home", true, v -> Toast.makeText(this, "Home", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("▦  Multi Screen", false, v -> { if (focusMode) exitFocus(); updatePanesLayout(); }));
-        side.addView(navButton("♡  Favorites", false, v -> Toast.makeText(this, "Favoritos entram na 0.3", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("⚽  Sports", false, v -> Toast.makeText(this, "Modo esportes entra depois", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("◎  Browser", false, v -> addScreen()));
-        side.addView(navButton("⚙  Settings", false, v -> showAboutDialog()));
+        side.addView(navButton("Home", R.drawable.ic_hs_home, true, v -> Toast.makeText(this, "Home", Toast.LENGTH_SHORT).show()));
+        side.addView(navButton("Multi Screen", R.drawable.ic_hs_grid, false, v -> { if (focusMode) exitFocus(); updatePanesLayout(); }));
+        side.addView(navButton("Favorites", R.drawable.ic_hs_heart, false, v -> Toast.makeText(this, "Favoritos entram na próxima etapa", Toast.LENGTH_SHORT).show()));
+        side.addView(navButton("Sports", R.drawable.ic_hs_sports, false, v -> Toast.makeText(this, "Modo esportes entra depois", Toast.LENGTH_SHORT).show()));
+        side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> addScreen()));
+        side.addView(navButton("Settings", R.drawable.ic_hs_settings, false, v -> showAboutDialog()));
 
         View flex = new View(this);
         side.addView(flex, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -160,7 +166,8 @@ public class MainActivity extends Activity {
         status.setGravity(Gravity.CENTER);
         status.setPadding(dp(8), dp(12), dp(8), dp(12));
         status.setBackground(cardBg(Color.rgb(18, 24, 39), Color.rgb(28, 35, 55), dp(16), 1));
-        TextView icon = label("▯▯", 28, BLUE, true);
+        TextView icon = label("", 28, BLUE, true);
+        setCenterIcon(icon, R.drawable.ic_hs_grid, ICON_BLUE, 34);
         icon.setGravity(Gravity.CENTER);
         TextView title = label("Dual Screen Mode  •", 14, TEXT, true);
         title.setGravity(Gravity.CENTER);
@@ -173,8 +180,9 @@ public class MainActivity extends Activity {
         return side;
     }
 
-    private TextView navButton(String text, boolean active, View.OnClickListener listener) {
+    private TextView navButton(String text, int iconRes, boolean active, View.OnClickListener listener) {
         TextView b = label(text, 16, TEXT, true);
+        setLeftIcon(b, iconRes, active ? ICON_ACTIVE : ICON_NORMAL, 21);
         b.setGravity(Gravity.CENTER_VERTICAL);
         b.setPadding(dp(18), 0, dp(12), 0);
         GradientDrawable bg = new GradientDrawable(
@@ -197,42 +205,49 @@ public class MainActivity extends Activity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(0, 0, 0, dp(8));
 
-        Button menu = chip("☰", MUTED);
+        Button menu = chip("", MUTED);
+        setButtonIcon(menu, R.drawable.ic_hs_menu, ICON_NORMAL, 20);
         menu.setOnClickListener(v -> toggleSidebar());
         bar.addView(menu, new LinearLayout.LayoutParams(dp(52), dp(42)));
 
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
         titles.setPadding(dp(8), 0, 0, 0);
-        TextView title = label("▯  Dual Screen", 20, TEXT, true);
+        TextView title = label("Dual Screen", 20, TEXT, true);
+        setLeftIcon(title, R.drawable.ic_hs_grid, ICON_BLUE, 21);
         TextView desc = label("Watch two official web streams at the same time", 12, MUTED, false);
         titles.addView(title, new LinearLayout.LayoutParams(-1, dp(28)));
         titles.addView(desc, new LinearLayout.LayoutParams(-1, dp(24)));
         bar.addView(titles, new LinearLayout.LayoutParams(0, -1, 1));
 
-        Button add = chip("＋ Tela", BLUE);
+        Button add = chip("Tela", BLUE);
+        setButtonIcon(add, R.drawable.ic_hs_plus, ICON_ACTIVE, 17);
         add.setOnClickListener(v -> addScreen());
         bar.addView(add, new LinearLayout.LayoutParams(dp(92), dp(42)));
 
-        Button swap = chip("↔  Swap", PURPLE);
+        Button swap = chip("Swap", PURPLE);
+        setButtonIcon(swap, R.drawable.ic_hs_swap, ICON_ACTIVE, 17);
         swap.setOnClickListener(v -> swapScreens());
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(dp(112), dp(42));
         slp.setMargins(dp(8), 0, 0, 0);
         bar.addView(swap, slp);
 
-        Button size = chip("⇆ Size", BLUE);
+        Button size = chip("Size", BLUE);
+        setButtonIcon(size, R.drawable.ic_hs_resize, ICON_NORMAL, 17);
         size.setOnClickListener(v -> cycleSizeMode());
         LinearLayout.LayoutParams zlp = new LinearLayout.LayoutParams(dp(92), dp(42));
         zlp.setMargins(dp(8), 0, 0, 0);
         bar.addView(size, zlp);
 
-        Button layout = chip("▤", BLUE);
+        Button layout = chip("", BLUE);
+        setButtonIcon(layout, R.drawable.ic_hs_layout, ICON_NORMAL, 19);
         layout.setOnClickListener(v -> toggleSplitOrientation());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(58), dp(42));
         lp.setMargins(dp(8), 0, 0, 0);
         bar.addView(layout, lp);
 
-        Button more = chip("⋮", MUTED);
+        Button more = chip("", MUTED);
+        setButtonIcon(more, R.drawable.ic_hs_more, ICON_NORMAL, 20);
         more.setOnClickListener(v -> showMoreDialog());
         LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(dp(58), dp(42));
         mlp.setMargins(dp(8), 0, 0, 0);
@@ -247,13 +262,15 @@ public class MainActivity extends Activity {
         box.setPadding(dp(18), dp(18), dp(18), dp(18));
         box.setBackground(cardBg(Color.rgb(10, 13, 23), Color.rgb(45, 56, 86), dp(18), 1));
 
-        TextView plus = label("＋", 48, BLUE, true);
+        TextView plus = label("", 48, BLUE, true);
+        setCenterIcon(plus, R.drawable.ic_hs_plus, ICON_BLUE, 52);
         plus.setGravity(Gravity.CENTER);
         TextView title = label("Adicionar tela", 22, TEXT, true);
         title.setGravity(Gravity.CENTER);
         TextView desc = label("Abra um site, use como navegador ou combine com outra transmissão.", 13, MUTED, false);
         desc.setGravity(Gravity.CENTER);
-        Button add = chip("＋ Nova tela", PURPLE);
+        Button add = chip("Nova tela", PURPLE);
+        setButtonIcon(add, R.drawable.ic_hs_plus, ICON_ACTIVE, 18);
         add.setOnClickListener(v -> addScreen());
 
         box.addView(plus, new LinearLayout.LayoutParams(-1, dp(62)));
@@ -385,8 +402,8 @@ public class MainActivity extends Activity {
         focusMode = false;
         sidebar.setVisibility(sidebarCollapsed ? View.GONE : View.VISIBLE);
         topBar.setVisibility(View.VISIBLE);
-        paneA.focusButton.setText("⛶ Foco");
-        paneB.focusButton.setText("⛶ Foco");
+        paneA.focusButton.setText("Foco");
+        paneB.focusButton.setText("Foco");
         updatePanesLayout();
     }
 
@@ -398,6 +415,27 @@ public class MainActivity extends Activity {
         t.setIncludeFontPadding(false);
         if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         return t;
+    }
+
+    private Drawable iconDrawable(int resId, int color, int sizeDp) {
+        Drawable d = getResources().getDrawable(resId).mutate();
+        d.setTint(color);
+        d.setBounds(0, 0, dp(sizeDp), dp(sizeDp));
+        return d;
+    }
+
+    private void setLeftIcon(TextView target, int resId, int color, int sizeDp) {
+        target.setCompoundDrawables(iconDrawable(resId, color, sizeDp), null, null, null);
+        target.setCompoundDrawablePadding(dp(10));
+    }
+
+    private void setCenterIcon(TextView target, int resId, int color, int sizeDp) {
+        target.setCompoundDrawables(null, iconDrawable(resId, color, sizeDp), null, null);
+    }
+
+    private void setButtonIcon(Button target, int resId, int color, int sizeDp) {
+        target.setCompoundDrawables(iconDrawable(resId, color, sizeDp), null, null, null);
+        target.setCompoundDrawablePadding(dp(6));
     }
 
     private Button chip(String text, int accent) {
@@ -465,14 +503,14 @@ public class MainActivity extends Activity {
 
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("HubSyncBr 0.2 — UI Core")
-                .setMessage("Atualização com menu recolhível, fechamento real de telas, botão adicionar, modo 1 tela/2 telas, tamanho A/B e busca inteligente na barra de URL. A tela cheia do player do site continua respeitando o comportamento do próprio site.")
+                .setTitle("HubSyncBr 0.3 — Icon Pack")
+                .setMessage("Atualização visual com pacote de ícones roxo/azul estilo premium nos botões pequenos, sidebar, topbar e controles das janelas. As funções principais da 0.2 foram mantidas.")
                 .setPositiveButton("OK", null)
                 .show();
     }
 
     private void showMoreDialog() {
-        String[] items = new String[]{"＋ Adicionar tela", "⛶ Recolher/abrir menu", "⇆ Ajustar tamanho", "⟳ Recarregar telas", "× Fechar todas", "ℹ Sobre", "⚖ Aviso legal"};
+        String[] items = new String[]{"Adicionar tela", "Recolher/abrir menu", "Ajustar tamanho", "Recarregar telas", "Fechar todas", "Sobre", "Aviso legal"};
         new AlertDialog.Builder(this)
                 .setTitle("HubSyncBr")
                 .setItems(items, (dialog, which) -> {
@@ -520,7 +558,8 @@ public class MainActivity extends Activity {
             header.setPadding(dp(8), 0, dp(8), 0);
             title = label(slot + "   " + name, 13, TEXT, true);
             header.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
-            TextView close = label("×", 22, MUTED, true);
+            TextView close = label("", 22, MUTED, true);
+            setCenterIcon(close, R.drawable.ic_hs_close, ICON_NORMAL, 20);
             close.setGravity(Gravity.CENTER);
             close.setOnClickListener(v -> closePane(this));
             header.addView(close, new LinearLayout.LayoutParams(dp(36), -1));
@@ -536,15 +575,18 @@ public class MainActivity extends Activity {
             toolbar.setPadding(dp(4), dp(5), dp(4), dp(5));
             toolbar.setBackgroundColor(Color.rgb(11, 15, 25));
 
-            Button back = miniButton("‹");
+            Button back = miniButton("");
+            setButtonIcon(back, R.drawable.ic_hs_back, ICON_NORMAL, 18);
             back.setOnClickListener(v -> { if (webView.canGoBack()) webView.goBack(); });
             toolbar.addView(back, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
-            Button forward = miniButton("›");
+            Button forward = miniButton("");
+            setButtonIcon(forward, R.drawable.ic_hs_forward, ICON_NORMAL, 18);
             forward.setOnClickListener(v -> { if (webView.canGoForward()) webView.goForward(); });
             toolbar.addView(forward, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
-            Button reload = miniButton("⟳");
+            Button reload = miniButton("");
+            setButtonIcon(reload, R.drawable.ic_hs_reload, ICON_NORMAL, 18);
             reload.setOnClickListener(v -> webView.reload());
             toolbar.addView(reload, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
@@ -583,19 +625,23 @@ public class MainActivity extends Activity {
             controls.setOrientation(LinearLayout.HORIZONTAL);
             controls.setGravity(Gravity.CENTER_VERTICAL);
             controls.setPadding(dp(4), dp(6), dp(4), 0);
-            focusButton = actionButton("⛶ Foco", accent);
+            focusButton = actionButton("Foco", accent);
+            setButtonIcon(focusButton, R.drawable.ic_hs_focus, ICON_ACTIVE, 16);
             focusButton.setOnClickListener(v -> { if (focusMode) exitFocus(); else enterFocus(this); });
             controls.addView(focusButton, new LinearLayout.LayoutParams(0, dp(42), 1));
 
             muteButton = actionButton("Som", accent);
+            setButtonIcon(muteButton, R.drawable.ic_hs_volume, ICON_NORMAL, 16);
             muteButton.setOnClickListener(v -> toggleMute());
             controls.addView(muteButton, new LinearLayout.LayoutParams(0, dp(42), 1));
 
             Button desktop = actionButton("Desktop", accent);
+            setButtonIcon(desktop, R.drawable.ic_hs_desktop, ICON_NORMAL, 16);
             desktop.setOnClickListener(v -> toggleDesktopMode());
             controls.addView(desktop, new LinearLayout.LayoutParams(0, dp(42), 1));
 
             Button external = actionButton("Externo", accent);
+            setButtonIcon(external, R.drawable.ic_hs_external, ICON_NORMAL, 16);
             external.setOnClickListener(v -> openExternal(currentUrl()));
             controls.addView(external, new LinearLayout.LayoutParams(0, dp(42), 1));
             container.addView(controls, new LinearLayout.LayoutParams(-1, dp(50)));
@@ -726,6 +772,7 @@ public class MainActivity extends Activity {
             try {
                 webView.evaluateJavascript(js, null);
                 muteButton.setText(muted ? "Mudo" : "Som");
+                setButtonIcon(muteButton, muted ? R.drawable.ic_hs_mute : R.drawable.ic_hs_volume, muted ? ICON_ACTIVE : ICON_NORMAL, 16);
             } catch (Exception e) {
                 Toast.makeText(MainActivity.this, "Mute depende do player do site", Toast.LENGTH_SHORT).show();
             }
@@ -735,7 +782,7 @@ public class MainActivity extends Activity {
             desktopMode = !desktopMode;
             WebSettings settings = webView.getSettings();
             if (desktopMode) {
-                settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.2");
+                settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.3");
                 Toast.makeText(MainActivity.this, "Modo desktop", Toast.LENGTH_SHORT).show();
             } else {
                 settings.setUserAgentString(mobileUa);
