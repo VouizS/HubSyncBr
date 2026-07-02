@@ -567,7 +567,10 @@ public class MainActivity extends Activity {
         }
         windowContainer.removeAllViews();
         detach(emptyState);
-        for (StreamPane pane : panes) detach(pane.container);
+        for (StreamPane pane : panes) {
+            detach(pane.container);
+            pane.setTileCompact(false);
+        }
 
         if (visiblePanes.isEmpty()) {
             windowContainer.setOrientation(LinearLayout.VERTICAL);
@@ -576,26 +579,64 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // Quando o núcleo entra em 3/4 janelas, o app prioriza espaço de conteúdo.
-        if (visiblePanes.size() >= 3 && !sidebarCollapsed) {
+        // Em retrato e em 3/4 janelas, o app vira workspace: prioriza o conteúdo.
+        if ((visiblePanes.size() >= 3 || (isPortraitWorkspace() && visiblePanes.size() >= 2)) && !sidebarCollapsed) {
             sidebarCollapsed = true;
             sidebar.setVisibility(View.GONE);
             mainArea.setPadding(0, 0, 0, 0);
         }
 
+        boolean compactTiles = shouldUseCompactTiles();
+        for (StreamPane pane : visiblePanes) pane.setTileCompact(compactTiles);
+
         if (visiblePanes.size() == 1) {
+            visiblePanes.get(0).setTileCompact(false);
             windowContainer.setOrientation(LinearLayout.VERTICAL);
             windowContainer.addView(visiblePanes.get(0).container, new LinearLayout.LayoutParams(-1, -1));
             updateStatusText();
             return;
         }
 
-        if (visiblePanes.size() <= 2 && layoutMode != 3) {
+        if (isPortraitWorkspace() && visiblePanes.size() >= 2) {
+            renderPortraitAdaptiveLayout();
+        } else if (visiblePanes.size() <= 2 && layoutMode != 3) {
             renderTwoPaneLayout();
         } else {
             renderGridLayout();
         }
         updateStatusText();
+    }
+
+    private boolean isPortraitWorkspace() {
+        return getResources().getConfiguration().screenHeightDp > getResources().getConfiguration().screenWidthDp;
+    }
+
+    private boolean shouldUseCompactTiles() {
+        // Em retrato, 3/4 janelas precisam esconder a barra URL para o site respirar.
+        return isPortraitWorkspace() && visiblePanes.size() >= 3;
+    }
+
+    private void renderPortraitAdaptiveLayout() {
+        windowContainer.setOrientation(LinearLayout.VERTICAL);
+        if (visiblePanes.size() == 2) {
+            // Em retrato, duas janelas empilhadas mostram melhor o conteúdo do site do que lado a lado.
+            windowContainer.addView(visiblePanes.get(0).container, new LinearLayout.LayoutParams(-1, 0, 1));
+            windowContainer.addView(spacer(true), new LinearLayout.LayoutParams(-1, dp(5)));
+            windowContainer.addView(visiblePanes.get(1).container, new LinearLayout.LayoutParams(-1, 0, 1));
+            return;
+        }
+
+        // Três/quatro janelas em retrato: grade 2x2 compacta.
+        LinearLayout row1 = gridRow();
+        LinearLayout row2 = gridRow();
+        windowContainer.addView(row1, new LinearLayout.LayoutParams(-1, 0, 1));
+        windowContainer.addView(spacer(true), new LinearLayout.LayoutParams(-1, dp(5)));
+        windowContainer.addView(row2, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        addPaneToRow(row1, visiblePanes.get(0));
+        if (visiblePanes.size() > 1) addPaneToRow(row1, visiblePanes.get(1));
+        if (visiblePanes.size() > 2) addPaneToRow(row2, visiblePanes.get(2));
+        if (visiblePanes.size() > 3) addPaneToRow(row2, visiblePanes.get(3));
     }
 
     private void renderTwoPaneLayout() {
@@ -664,6 +705,7 @@ public class MainActivity extends Activity {
         if (headerDesc != null) {
             if (visiblePanes.size() == 0) headerDesc.setText("Adicione uma janela para começar");
             else if (visiblePanes.size() == 1) headerDesc.setText("Uma janela web ativa no núcleo");
+            else if (isPortraitWorkspace()) headerDesc.setText(visiblePanes.size() + " janelas adaptadas ao retrato");
             else headerDesc.setText(visiblePanes.size() + " janelas web visíveis simultaneamente");
         }
     }
@@ -715,9 +757,9 @@ public class MainActivity extends Activity {
         TextView info = label(managedPanes.size() + " abertas no grupo • " + visiblePanes.size() + " visíveis • limite visível atual: 4", 13, MUTED, false);
         panel.addView(info, new LinearLayout.LayoutParams(-1, dp(30)));
 
-        Button add = panelButton("Nova janela", R.drawable.ic_hs_plus, BLUE);
-        add.setOnClickListener(v -> { if (holder[0] != null) holder[0].dismiss(); addWindow(); });
-        panel.addView(add, new LinearLayout.LayoutParams(-1, dp(46)));
+        TextView add = dialogAction("Nova janela", R.drawable.ic_hs_plus, () -> { if (holder[0] != null) holder[0].dismiss(); addWindow(); });
+        add.setTextColor(TEXT);
+        panel.addView(add, new LinearLayout.LayoutParams(-1, dp(42)));
 
         if (managedPanes.isEmpty()) {
             TextView empty = label("Nenhuma janela aberta ainda.", 15, MUTED, false);
@@ -725,7 +767,7 @@ public class MainActivity extends Activity {
             panel.addView(empty, new LinearLayout.LayoutParams(-1, dp(80)));
         } else {
             for (StreamPane pane : new ArrayList<>(managedPanes)) {
-                panel.addView(windowCard(pane, holder), new LinearLayout.LayoutParams(-1, dp(106)));
+                panel.addView(windowCard(pane, holder), new LinearLayout.LayoutParams(-1, dp(84)));
             }
         }
 
@@ -743,39 +785,40 @@ public class MainActivity extends Activity {
     private LinearLayout windowCard(StreamPane pane, AlertDialog[] holder) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(12), dp(8), dp(12), dp(8));
+        card.setPadding(dp(12), dp(7), dp(12), dp(7));
         card.setBackground(cardBg(Color.rgb(14, 18, 30), visiblePanes.contains(pane) ? pane.accent : Color.rgb(41, 48, 66), dp(14), 1));
+
+        LinearLayout top = new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView title = label(pane.displayTitle(), 15, TEXT, true);
         setLeftIcon(title, visiblePanes.contains(pane) ? R.drawable.ic_hs_grid : R.drawable.ic_hs_browser, visiblePanes.contains(pane) ? ICON_BLUE : ICON_NORMAL, 18);
-        card.addView(title, new LinearLayout.LayoutParams(-1, dp(28)));
+        top.addView(title, new LinearLayout.LayoutParams(0, dp(28), 1));
 
-        TextView url = label(shortUrl(pane.currentUrl()), 11, MUTED, false);
-        card.addView(url, new LinearLayout.LayoutParams(-1, dp(22)));
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button show = panelSmallButton(visiblePanes.contains(pane) ? "Ocultar" : "Mostrar", visiblePanes.contains(pane) ? R.drawable.ic_hs_close : R.drawable.ic_hs_plus, pane.accent);
-        show.setOnClickListener(v -> {
+        TextView show = topIcon(visiblePanes.contains(pane) ? R.drawable.ic_hs_close : R.drawable.ic_hs_plus, ICON_NORMAL, visiblePanes.contains(pane) ? "Ocultar janela" : "Mostrar janela", v -> {
             if (holder[0] != null) holder[0].dismiss();
             if (visiblePanes.contains(pane)) hidePane(pane); else showPane(pane);
         });
-        actions.addView(show, new LinearLayout.LayoutParams(0, dp(38), 1));
+        top.addView(show, new LinearLayout.LayoutParams(dp(36), dp(30)));
 
-        Button focus = panelSmallButton("Foco", R.drawable.ic_hs_focus, pane.accent);
-        focus.setOnClickListener(v -> {
+        TextView focus = topIcon(R.drawable.ic_hs_focus, ICON_NORMAL, "Focar janela", v -> {
             if (holder[0] != null) holder[0].dismiss();
             if (!visiblePanes.contains(pane)) showPane(pane);
             enterFocus(pane);
         });
-        actions.addView(focus, new LinearLayout.LayoutParams(0, dp(38), 1));
+        top.addView(focus, new LinearLayout.LayoutParams(dp(36), dp(30)));
 
-        Button close = panelSmallButton("Fechar", R.drawable.ic_hs_close, pane.accent);
-        close.setOnClickListener(v -> { if (holder[0] != null) holder[0].dismiss(); closePane(pane); });
-        actions.addView(close, new LinearLayout.LayoutParams(0, dp(38), 1));
-        card.addView(actions, new LinearLayout.LayoutParams(-1, dp(42)));
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, dp(106));
-        cardParams.setMargins(0, dp(8), 0, 0);
+        TextView close = topIcon(R.drawable.ic_hs_close, ICON_NORMAL, "Fechar janela", v -> { if (holder[0] != null) holder[0].dismiss(); closePane(pane); });
+        top.addView(close, new LinearLayout.LayoutParams(dp(36), dp(30)));
+        card.addView(top, new LinearLayout.LayoutParams(-1, dp(32)));
+
+        TextView url = label(shortUrl(pane.currentUrl()), 11, MUTED, false);
+        url.setPadding(dp(2), 0, 0, 0);
+        card.addView(url, new LinearLayout.LayoutParams(-1, dp(22)));
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, dp(84));
+        cardParams.setMargins(0, dp(7), 0, 0);
         card.setLayoutParams(cardParams);
         return card;
     }
@@ -1015,8 +1058,8 @@ public class MainActivity extends Activity {
 
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("HubSyncBr 0.5 — Groups Workspace")
-                .setMessage("Sistema inicial de grupos: a tela principal pode mostrar grupos, cada grupo abre um workspace próprio com janelas web nativas, gerenciador de janelas, layouts e base para agrupamento estilo Chrome.")
+                .setTitle("HubSyncBr 0.5.1 — Adaptive Portrait Workspace")
+                .setMessage("Workspace adaptativo: modo retrato com janelas ajustáveis, grade 2x2 quando houver 4 visíveis, cards de janelas mais limpos e núcleo preparado para grupos estilo Chrome.")
                 .setPositiveButton("OK", null)
                 .show();
     }
@@ -1149,6 +1192,26 @@ public class MainActivity extends Activity {
 
             focusButton = new Button(MainActivity.this);
             muteButton = new Button(MainActivity.this);
+        }
+
+        void setTileCompact(boolean compact) {
+            // Compacta cada janela quando o núcleo precisa mostrar 3/4 telas no modo retrato.
+            container.setPadding(dp(3), dp(3), dp(3), dp(3));
+            View headerView = container.getChildAt(0);
+            if (headerView != null) {
+                ViewGroup.LayoutParams hp = headerView.getLayoutParams();
+                hp.height = compact ? dp(22) : dp(28);
+                headerView.setLayoutParams(hp);
+            }
+            View lineView = container.getChildAt(1);
+            if (lineView != null) {
+                ViewGroup.LayoutParams lp = lineView.getLayoutParams();
+                lp.height = compact ? dp(1) : dp(2);
+                lineView.setLayoutParams(lp);
+            }
+            View toolbarView = container.getChildAt(2);
+            if (toolbarView != null) toolbarView.setVisibility(compact ? View.GONE : View.VISIBLE);
+            title.setTextSize(compact ? 10 : 12);
         }
 
         private Button miniButton(String text) {
@@ -1316,7 +1379,7 @@ public class MainActivity extends Activity {
             desktopMode = !desktopMode;
             WebSettings settings = webView.getSettings();
             if (desktopMode) {
-                settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.5");
+                settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.5.1");
                 Toast.makeText(MainActivity.this, "Modo desktop", Toast.LENGTH_SHORT).show();
             } else {
                 settings.setUserAgentString(mobileUa);
