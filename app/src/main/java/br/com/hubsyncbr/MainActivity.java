@@ -132,12 +132,9 @@ public class MainActivity extends Activity {
         emptyState = createEmptyState();
 
         activeGroup = createGroup("Meu Hub");
-        StreamPane a = createPane("YouTube", "https://www.youtube.com", PURPLE);
-        StreamPane b = createPane("Twitch", "https://www.twitch.tv", BLUE);
+        StreamPane a = createPane("Hub Home", getHomepageUrl(), PURPLE);
         a.loadDefault();
-        b.loadDefault();
         showPane(a);
-        showPane(b);
 
         // Em telas estreitas/retrato, o app começa focado no núcleo.
         if (getResources().getConfiguration().screenWidthDp < 760) {
@@ -473,7 +470,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Limite técnico desta versão: " + MAX_OPEN_WINDOWS + " janelas abertas", Toast.LENGTH_LONG).show();
             return;
         }
-        StreamPane pane = createPane("Web", "https://www.google.com", accentForIndex(panes.size()));
+        StreamPane pane = createPane("Hub Home", getHomepageUrl(), accentForIndex(panes.size()));
         pane.loadDefault();
         if (visiblePanes.size() < MAX_VISIBLE_WINDOWS) {
             showPane(pane);
@@ -839,6 +836,7 @@ public class MainActivity extends Activity {
         panel.addView(dialogAction("Recarregar visíveis", R.drawable.ic_hs_reload, () -> { if (holder[0] != null) holder[0].dismiss(); reloadVisible(); }));
         panel.addView(dialogAction("Fechar todas", R.drawable.ic_hs_close, () -> { if (holder[0] != null) holder[0].dismiss(); closeAllPanes(); }));
         panel.addView(dialogAction("Sobre", R.drawable.ic_hs_settings, () -> { if (holder[0] != null) holder[0].dismiss(); showAboutDialog(); }));
+        panel.addView(dialogAction("Configurações do navegador", R.drawable.ic_hs_settings, () -> { if (holder[0] != null) holder[0].dismiss(); showBrowserSettings(); }));
         panel.addView(dialogAction("Aviso legal", R.drawable.ic_hs_browser, () -> { if (holder[0] != null) holder[0].dismiss(); showLegalDialog(null); }));
 
         AlertDialog dialog = new AlertDialog.Builder(this).create();
@@ -1013,18 +1011,101 @@ public class MainActivity extends Activity {
         view.setVisibility(View.VISIBLE);
     }
 
+
+    private SharedPreferences hubPrefs() {
+        return getSharedPreferences("hub", MODE_PRIVATE);
+    }
+
+    private String getHomepageUrl() {
+        SharedPreferences prefs = hubPrefs();
+        String mode = prefs.getString("homepage_mode", "hub");
+        if ("blank".equals(mode)) return "about:blank";
+        if ("google".equals(mode)) return "https://www.google.com";
+        if ("custom".equals(mode)) {
+            String custom = prefs.getString("custom_homepage", "https://www.google.com");
+            if (custom == null || custom.trim().isEmpty()) return hubHomeDataUrl();
+            String c = custom.trim();
+            if (c.startsWith("http://") || c.startsWith("https://")) return c;
+            if (c.contains(".")) return "https://" + c;
+            return searchUrl(c);
+        }
+        return hubHomeDataUrl();
+    }
+
+    private String searchUrl(String query) {
+        String q = query == null ? "" : query.trim();
+        try { q = URLEncoder.encode(q, "UTF-8"); } catch (Exception ignored) { q = q.replace(" ", "+"); }
+        String engine = hubPrefs().getString("search_engine", "google");
+        if ("duckduckgo".equals(engine)) return "https://duckduckgo.com/?q=" + q;
+        if ("bing".equals(engine)) return "https://www.bing.com/search?q=" + q;
+        if ("brave".equals(engine)) return "https://search.brave.com/search?q=" + q;
+        return "https://www.google.com/search?q=" + q;
+    }
+
+    private String hubHomeDataUrl() {
+        String engine = hubPrefs().getString("search_engine", "google");
+        String engineName = "Google";
+        if ("duckduckgo".equals(engine)) engineName = "DuckDuckGo";
+        else if ("bing".equals(engine)) engineName = "Bing";
+        else if ("brave".equals(engine)) engineName = "Brave";
+        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                "<style>body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:24px;}" +
+                ".wrap{max-width:900px;margin:auto}.logo{font-size:34px;font-weight:800;margin-top:20px}.tag{color:#9aa3b8;margin:8px 0 24px}" +
+                ".search{display:flex;gap:8px;background:#101420;border:1px solid #4f46e5;border-radius:22px;padding:8px;box-shadow:0 0 18px #1d4ed833}" +
+                "input{flex:1;background:transparent;border:0;color:#fff;font-size:16px;outline:0;padding:12px}button{background:#8b5cf6;color:white;border:0;border-radius:16px;padding:0 18px;font-weight:700}" +
+                ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:24px}.card{display:block;text-decoration:none;color:#ecf0ff;background:#101420;border:1px solid #25304a;border-radius:18px;padding:18px}" +
+                ".card b{display:block;margin-bottom:6px}.card span{color:#9aa3b8;font-size:12px}.engine{color:#38bdf8;font-size:12px;margin-top:10px}</style></head><body><div class='wrap'>" +
+                "<div class='logo'>▣▣ HubSyncBr</div><div class='tag'>Seu browser workspace para janelas, grupos e transmissões.</div>" +
+                "<form class='search' onsubmit=\"var q=document.getElementById('q').value.trim(); if(!q)return false; if(q.indexOf('.')>-1 && q.indexOf(' ')==-1){location.href=q.indexOf('http')==0?q:'https://'+q}else{location.href='" + searchUrl("__Q__").replace("__Q__", "'+encodeURIComponent(q)+'") + "'} return false;\">" +
+                "<input id='q' placeholder='Pesquisar ou digitar URL'><button>Ir</button></form><div class='engine'>Busca atual: " + engineName + "</div>" +
+                "<div class='grid'>" +
+                "<a class='card' href='https://www.youtube.com'><b>YouTube</b><span>Vídeos e transmissões</span></a>" +
+                "<a class='card' href='https://www.twitch.tv'><b>Twitch</b><span>Lives e canais</span></a>" +
+                "<a class='card' href='https://www.kick.com'><b>Kick</b><span>Streams</span></a>" +
+                "<a class='card' href='https://www.google.com'><b>Google</b><span>Pesquisa web</span></a>" +
+                "<a class='card' href='https://chat.openai.com'><b>ChatGPT</b><span>Assistente web</span></a>" +
+                "<a class='card' href='https://github.com'><b>GitHub</b><span>Código e projetos</span></a>" +
+                "</div></div></body></html>";
+        return "data:text/html;charset=utf-8," + Uri.encode(html);
+    }
+
+    private void showBrowserSettings() {
+        final String[] items = new String[]{
+                "Homepage: HubSyncBr Home",
+                "Homepage: Google",
+                "Homepage: Em branco",
+                "Busca: Google",
+                "Busca: DuckDuckGo",
+                "Busca: Bing",
+                "Busca: Brave Search"
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Navegador HubSyncBr")
+                .setItems(items, (dialog, which) -> {
+                    SharedPreferences.Editor e = hubPrefs().edit();
+                    if (which == 0) e.putString("homepage_mode", "hub");
+                    if (which == 1) e.putString("homepage_mode", "google");
+                    if (which == 2) e.putString("homepage_mode", "blank");
+                    if (which == 3) e.putString("search_engine", "google");
+                    if (which == 4) e.putString("search_engine", "duckduckgo");
+                    if (which == 5) e.putString("search_engine", "bing");
+                    if (which == 6) e.putString("search_engine", "brave");
+                    e.apply();
+                    Toast.makeText(this, "Configuração salva. Novas janelas usarão a nova opção.", Toast.LENGTH_LONG).show();
+                })
+                .show();
+    }
+
     private String normalizeUrl(String raw) {
-        if (raw == null || raw.trim().isEmpty()) return "https://www.google.com";
+        if (raw == null || raw.trim().isEmpty()) return getHomepageUrl();
         String u = raw.trim();
         if (u.equals("about:blank")) return u;
+        if (u.equals("hubsyncbr://home")) return getHomepageUrl();
+        if (u.startsWith("data:")) return u;
         if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("file://")) return u;
         boolean looksLikeUrl = u.contains(".") && !u.contains(" ");
         if (looksLikeUrl) return "https://" + u;
-        try {
-            return "https://www.google.com/search?q=" + URLEncoder.encode(u, "UTF-8");
-        } catch (Exception e) {
-            return "https://www.google.com/search?q=" + u.replace(" ", "+");
-        }
+        return searchUrl(u);
     }
 
     private String shortUrl(String raw) {
@@ -1083,6 +1164,7 @@ public class MainActivity extends Activity {
         final LinearLayout container;
         final TextView title;
         final EditText urlBar;
+        final LinearLayout toolbar;
         final WebView webView;
         final Button focusButton;
         final Button muteButton;
@@ -1133,7 +1215,7 @@ public class MainActivity extends Activity {
             accentLine.setBackgroundColor(accent);
             container.addView(accentLine, new LinearLayout.LayoutParams(-1, dp(2)));
 
-            LinearLayout toolbar = new LinearLayout(ctx);
+            toolbar = new LinearLayout(ctx);
             toolbar.setOrientation(LinearLayout.HORIZONTAL);
             toolbar.setGravity(Gravity.CENTER_VERTICAL);
             toolbar.setPadding(dp(2), dp(3), dp(2), dp(3));
@@ -1188,6 +1270,13 @@ public class MainActivity extends Activity {
 
             configureWebView(webView);
             mobileUa = webView.getSettings().getUserAgentString();
+            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                if (!hubPrefs().getBoolean("nav_autohide", true)) return;
+                if (urlBar.hasFocus()) return;
+                if (scrollY > oldScrollY + dp(3)) toolbar.setVisibility(View.GONE);
+                else if (scrollY < oldScrollY) toolbar.setVisibility(View.VISIBLE);
+            });
+            webView.setOnClickListener(v -> toolbar.setVisibility(View.VISIBLE));
             container.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
 
             focusButton = new Button(MainActivity.this);
@@ -1270,6 +1359,7 @@ public class MainActivity extends Activity {
                 @Override
                 public void onPageFinished(WebView view, String url) {
                     urlBar.setText(url);
+                    if (toolbar != null) toolbar.setVisibility(View.VISIBLE);
                     updateHeader();
                 }
             });
@@ -1330,6 +1420,7 @@ public class MainActivity extends Activity {
         void loadUrl(String raw) {
             String u = normalizeUrl(raw);
             urlBar.setText(u);
+            if (toolbar != null) toolbar.setVisibility(View.VISIBLE);
             webView.loadUrl(u);
         }
 

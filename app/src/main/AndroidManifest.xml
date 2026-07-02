@@ -10,9 +10,9 @@
         android:label="HubSyncBr"
         android:icon="@drawable/ic_launcher_foreground"
         android:roundIcon="@drawable/ic_launcher_foreground">
+
         <activity
-            android:name=".MainActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|uiMode"
+            android:name=".SplashActivity"
             android:exported="true"
             android:screenOrientation="fullUser">
             <intent-filter>
@@ -20,5 +20,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|uiMode"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
     </application>
 </manifest>
