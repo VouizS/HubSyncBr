@@ -74,6 +74,11 @@ public class MainActivity extends Activity {
     private boolean sidebarCollapsed = false;
     private int layoutMode = 0; // 0 = igual, 1 = primeira maior, 2 = segunda maior, 3 = grade 2x2
     private int nextPaneNumber = 1;
+    private int nextGroupNumber = 1;
+    private boolean groupOverviewMode = false;
+
+    private final List<WindowGroup> groups = new ArrayList<>();
+    private WindowGroup activeGroup;
 
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
@@ -126,6 +131,7 @@ public class MainActivity extends Activity {
 
         emptyState = createEmptyState();
 
+        activeGroup = createGroup("Meu Hub");
         StreamPane a = createPane("YouTube", "https://www.youtube.com", PURPLE);
         StreamPane b = createPane("Twitch", "https://www.twitch.tv", BLUE);
         a.loadDefault();
@@ -164,11 +170,11 @@ public class MainActivity extends Activity {
         sub.setPadding(dp(8), 0, dp(8), dp(10));
         side.addView(sub, new LinearLayout.LayoutParams(-1, dp(32)));
 
-        side.addView(navButton("Home", R.drawable.ic_hs_home, true, v -> Toast.makeText(this, "Home", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("Multi Screen", R.drawable.ic_hs_grid, false, v -> { if (focusMode) exitFocus(); updateWindowLayout(); }));
+        side.addView(navButton("Home", R.drawable.ic_hs_home, true, v -> showGroupsOverview()));
+        side.addView(navButton("Multi Screen", R.drawable.ic_hs_grid, false, v -> { if (focusMode) exitFocus(); enterGroup(activeGroup); }));
         side.addView(navButton("Favorites", R.drawable.ic_hs_heart, false, v -> Toast.makeText(this, "Favoritos entram depois", Toast.LENGTH_SHORT).show()));
         side.addView(navButton("Sports", R.drawable.ic_hs_sports, false, v -> Toast.makeText(this, "Modo esportes entra depois", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> addWindow()));
+        side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> { if (groupOverviewMode) enterGroup(activeGroup); addWindow(); }));
         side.addView(navButton("Settings", R.drawable.ic_hs_settings, false, v -> showAboutDialog()));
 
         View flex = new View(this);
@@ -240,7 +246,7 @@ public class MainActivity extends Activity {
         TextView size = topIcon(R.drawable.ic_hs_resize, ICON_NORMAL, "Trocar layout", v -> cycleLayoutMode());
         bar.addView(size, topIconParams());
 
-        TextView manager = topIcon(R.drawable.ic_hs_layout, ICON_NORMAL, "Gerenciar janelas", v -> showWindowManager());
+        TextView manager = topIcon(R.drawable.ic_hs_layout, ICON_NORMAL, groupOverviewMode ? "Gerenciar janelas" : "Ver grupos", v -> { if (groupOverviewMode) showWindowManager(); else showGroupsOverview(); });
         bar.addView(manager, topIconParams());
 
         TextView more = topIcon(R.drawable.ic_hs_more, ICON_NORMAL, "Mais opções", v -> showMorePanel());
@@ -292,9 +298,162 @@ public class MainActivity extends Activity {
         return box;
     }
 
+
+    private WindowGroup createGroup(String name) {
+        WindowGroup group = new WindowGroup(nextGroupNumber++, name == null || name.trim().isEmpty() ? "Grupo" : name.trim(), accentForIndex(groups.size()));
+        groups.add(group);
+        if (activeGroup == null) activeGroup = group;
+        return group;
+    }
+
+    private void showGroupsOverview() {
+        if (focusMode) exitFocus();
+        groupOverviewMode = true;
+        windowContainer.removeAllViews();
+        detach(emptyState);
+        for (StreamPane pane : panes) detach(pane.container);
+        windowContainer.setOrientation(LinearLayout.VERTICAL);
+        windowContainer.addView(createGroupsOverviewView(), new LinearLayout.LayoutParams(-1, -1));
+        updateStatusText();
+    }
+
+    private View createGroupsOverviewView() {
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(4), dp(4), dp(4), dp(4));
+        panel.setBackground(cardBg(Color.rgb(10, 13, 23), Color.rgb(45, 56, 86), dp(18), 1));
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = label("Grupos do Hub", 22, TEXT, true);
+        setLeftIcon(title, R.drawable.ic_hs_layout, ICON_BLUE, 24);
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(44), 1));
+        TextView add = topIcon(R.drawable.ic_hs_plus, ICON_ACTIVE, "Novo grupo", v -> createAndEnterGroup());
+        header.addView(add, new LinearLayout.LayoutParams(dp(48), dp(44)));
+        panel.addView(header, new LinearLayout.LayoutParams(-1, dp(50)));
+
+        TextView desc = label(groups.size() + " grupos • entre em um grupo para abrir o workspace de janelas", 13, MUTED, false);
+        desc.setPadding(dp(12), 0, dp(12), dp(6));
+        panel.addView(desc, new LinearLayout.LayoutParams(-1, dp(34)));
+
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        panel.addView(rows, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout currentRow = null;
+        for (int i = 0; i < groups.size(); i++) {
+            if (i % 2 == 0) {
+                currentRow = new LinearLayout(this);
+                currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                rows.addView(currentRow, new LinearLayout.LayoutParams(-1, dp(180)));
+            }
+            WindowGroup group = groups.get(i);
+            LinearLayout card = groupCard(group);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(168), 1);
+            lp.setMargins(dp(6), dp(6), dp(6), dp(6));
+            currentRow.addView(card, lp);
+        }
+
+        LinearLayout addCard = createAddGroupCard();
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(-1, dp(112));
+        alp.setMargins(dp(6), dp(10), dp(6), dp(6));
+        panel.addView(addCard, alp);
+
+        scroll.addView(panel);
+        return scroll;
+    }
+
+    private LinearLayout groupCard(WindowGroup group) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(cardBg(Color.rgb(14, 18, 30), group.accent, dp(18), 1));
+        card.setOnClickListener(v -> enterGroup(group));
+        attachTip(card, "Entrar no grupo " + group.name);
+
+        TextView title = label(group.name, 18, TEXT, true);
+        setLeftIcon(title, R.drawable.ic_hs_grid, ICON_BLUE, 22);
+        card.addView(title, new LinearLayout.LayoutParams(-1, dp(32)));
+
+        TextView info = label(group.panes.size() + " janelas • " + group.visible.size() + " visíveis", 12, MUTED, false);
+        card.addView(info, new LinearLayout.LayoutParams(-1, dp(24)));
+
+        LinearLayout preview = new LinearLayout(this);
+        preview.setOrientation(LinearLayout.VERTICAL);
+        preview.setPadding(dp(4), dp(4), dp(4), dp(4));
+        preview.setBackground(cardBg(Color.rgb(8, 11, 20), Color.rgb(31, 38, 57), dp(14), 1));
+        LinearLayout r1 = new LinearLayout(this);
+        r1.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout r2 = new LinearLayout(this);
+        r2.setOrientation(LinearLayout.HORIZONTAL);
+        preview.addView(r1, new LinearLayout.LayoutParams(-1, 0, 1));
+        preview.addView(r2, new LinearLayout.LayoutParams(-1, 0, 1));
+        for (int i = 0; i < 4; i++) {
+            TextView mini = label(i < group.panes.size() ? String.valueOf(i + 1) : "", 12, i < group.panes.size() ? TEXT : MUTED, true);
+            mini.setGravity(Gravity.CENTER);
+            mini.setBackground(cardBg(i < group.panes.size() ? Color.rgb(20, 26, 42) : Color.rgb(10, 13, 23), i < group.panes.size() ? group.accent : Color.rgb(28, 35, 55), dp(10), 1));
+            LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(0, -1, 1);
+            mlp.setMargins(dp(3), dp(3), dp(3), dp(3));
+            if (i < 2) r1.addView(mini, mlp); else r2.addView(mini, mlp);
+        }
+        card.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1));
+        return card;
+    }
+
+    private LinearLayout createAddGroupCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(18), dp(12), dp(18), dp(12));
+        card.setBackground(cardBg(Color.rgb(12, 16, 28), Color.rgb(52, 62, 90), dp(18), 1));
+        card.setOnClickListener(v -> createAndEnterGroup());
+        TextView icon = label("", 24, ICON_BLUE, true);
+        setCenterIcon(icon, R.drawable.ic_hs_plus, ICON_BLUE, 30);
+        card.addView(icon, new LinearLayout.LayoutParams(dp(48), -1));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        TextView t = label("Criar novo grupo", 18, TEXT, true);
+        TextView d = label("Um grupo pode guardar até 8 janelas e abrir até 4 visíveis nesta versão.", 12, MUTED, false);
+        texts.addView(t, new LinearLayout.LayoutParams(-1, dp(30)));
+        texts.addView(d, new LinearLayout.LayoutParams(-1, dp(34)));
+        card.addView(texts, new LinearLayout.LayoutParams(0, -1, 1));
+        return card;
+    }
+
+    private void createAndEnterGroup() {
+        WindowGroup group = createGroup("Grupo " + nextGroupNumber);
+        activeGroup = group;
+        visiblePanes.clear();
+        groupOverviewMode = false;
+        updateWindowLayout();
+        Toast.makeText(this, "Grupo criado", Toast.LENGTH_SHORT).show();
+    }
+
+    private void enterGroup(WindowGroup group) {
+        if (group == null) {
+            if (groups.isEmpty()) group = createGroup("Meu Hub");
+            else group = groups.get(0);
+        }
+        activeGroup = group;
+        groupOverviewMode = false;
+        if (focusMode) exitFocus();
+        visiblePanes.clear();
+        visiblePanes.addAll(group.visible);
+        if (visiblePanes.isEmpty()) {
+            for (StreamPane p : group.panes) {
+                if (visiblePanes.size() >= Math.min(MAX_VISIBLE_WINDOWS, 2)) break;
+                visiblePanes.add(p);
+            }
+        }
+        updateWindowLayout();
+    }
+
     private StreamPane createPane(String name, String url, int accent) {
         StreamPane pane = new StreamPane(this, nextPaneNumber++, name, url, accent);
         panes.add(pane);
+        if (activeGroup != null && !activeGroup.panes.contains(pane)) activeGroup.panes.add(pane);
         return pane;
     }
 
@@ -304,7 +463,13 @@ public class MainActivity extends Activity {
     }
 
     private void addWindow() {
-        if (panes.size() >= MAX_OPEN_WINDOWS) {
+        if (activeGroup == null) activeGroup = groups.isEmpty() ? createGroup("Meu Hub") : groups.get(0);
+        if (groupOverviewMode) groupOverviewMode = false;
+        if (activeGroup.panes.size() >= MAX_OPEN_WINDOWS) {
+            Toast.makeText(this, "Limite do grupo nesta versão: " + MAX_OPEN_WINDOWS + " janelas", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (panes.size() >= MAX_OPEN_WINDOWS * Math.max(1, groups.size())) {
             Toast.makeText(this, "Limite técnico desta versão: " + MAX_OPEN_WINDOWS + " janelas abertas", Toast.LENGTH_LONG).show();
             return;
         }
@@ -321,6 +486,7 @@ public class MainActivity extends Activity {
 
     private void showPane(StreamPane pane) {
         if (!panes.contains(pane)) panes.add(pane);
+        if (activeGroup != null && !activeGroup.panes.contains(pane)) activeGroup.panes.add(pane);
         if (!visiblePanes.contains(pane)) {
             if (visiblePanes.size() >= MAX_VISIBLE_WINDOWS) {
                 Toast.makeText(this, "Máximo visível agora: 4 janelas", Toast.LENGTH_SHORT).show();
@@ -328,6 +494,7 @@ public class MainActivity extends Activity {
             }
             visiblePanes.add(pane);
         }
+        if (activeGroup != null && !activeGroup.visible.contains(pane)) activeGroup.visible.add(pane);
         pane.visible = true;
         updateWindowLayout();
     }
@@ -335,6 +502,7 @@ public class MainActivity extends Activity {
     private void hidePane(StreamPane pane) {
         if (focusMode) exitFocus();
         visiblePanes.remove(pane);
+        if (activeGroup != null) activeGroup.visible.remove(pane);
         pane.visible = false;
         updateWindowLayout();
     }
@@ -342,6 +510,7 @@ public class MainActivity extends Activity {
     private void closePane(StreamPane pane) {
         if (focusMode) exitFocus();
         visiblePanes.remove(pane);
+        for (WindowGroup g : groups) { g.panes.remove(pane); g.visible.remove(pane); }
         panes.remove(pane);
         detach(pane.container);
         try { pane.webView.loadUrl("about:blank"); } catch (Exception ignored) {}
@@ -352,12 +521,14 @@ public class MainActivity extends Activity {
 
     private void closeAllPanes() {
         if (focusMode) exitFocus();
-        for (StreamPane pane : new ArrayList<>(panes)) {
+        List<StreamPane> target = activeGroup == null ? new ArrayList<>(panes) : new ArrayList<>(activeGroup.panes);
+        for (StreamPane pane : target) {
             detach(pane.container);
             try { pane.webView.loadUrl("about:blank"); } catch (Exception ignored) {}
             try { pane.webView.destroy(); } catch (Exception ignored) {}
+            panes.remove(pane);
+            for (WindowGroup g : groups) { g.panes.remove(pane); g.visible.remove(pane); }
         }
-        panes.clear();
         visiblePanes.clear();
         updateWindowLayout();
     }
@@ -390,6 +561,10 @@ public class MainActivity extends Activity {
 
     private void updateWindowLayout() {
         if (focusMode || windowContainer == null) return;
+        if (groupOverviewMode) {
+            showGroupsOverview();
+            return;
+        }
         windowContainer.removeAllViews();
         detach(emptyState);
         for (StreamPane pane : panes) detach(pane.container);
@@ -476,7 +651,14 @@ public class MainActivity extends Activity {
     }
 
     private void updateStatusText() {
-        if (screenStatusDesc != null) screenStatusDesc.setText(visiblePanes.size() + " visíveis / " + panes.size() + " abertas");
+        if (groupOverviewMode) {
+            if (screenStatusDesc != null) screenStatusDesc.setText(groups.size() + " grupos salvos");
+            if (screenStatusTitle != null) screenStatusTitle.setText("Groups  •");
+            if (headerTitle != null) headerTitle.setText("Groups");
+            if (headerDesc != null) headerDesc.setText("Escolha um grupo para abrir o workspace");
+            return;
+        }
+        if (screenStatusDesc != null) screenStatusDesc.setText(visiblePanes.size() + " visíveis / " + (activeGroup == null ? panes.size() : activeGroup.panes.size()) + " no grupo");
         if (screenStatusTitle != null) screenStatusTitle.setText(visiblePanes.size() >= 4 ? "Grid Mode  •" : "Hub View  •");
         if (headerTitle != null) headerTitle.setText(visiblePanes.size() >= 4 ? "Grid View" : "Hub View");
         if (headerDesc != null) {
@@ -529,19 +711,20 @@ public class MainActivity extends Activity {
         setLeftIcon(title, R.drawable.ic_hs_layout, ICON_BLUE, 22);
         panel.addView(title, new LinearLayout.LayoutParams(-1, dp(42)));
 
-        TextView info = label(panes.size() + " abertas • " + visiblePanes.size() + " visíveis • limite visível atual: 4", 13, MUTED, false);
+        List<StreamPane> managedPanes = activeGroup == null ? panes : activeGroup.panes;
+        TextView info = label(managedPanes.size() + " abertas no grupo • " + visiblePanes.size() + " visíveis • limite visível atual: 4", 13, MUTED, false);
         panel.addView(info, new LinearLayout.LayoutParams(-1, dp(30)));
 
         Button add = panelButton("Nova janela", R.drawable.ic_hs_plus, BLUE);
         add.setOnClickListener(v -> { if (holder[0] != null) holder[0].dismiss(); addWindow(); });
         panel.addView(add, new LinearLayout.LayoutParams(-1, dp(46)));
 
-        if (panes.isEmpty()) {
+        if (managedPanes.isEmpty()) {
             TextView empty = label("Nenhuma janela aberta ainda.", 15, MUTED, false);
             empty.setGravity(Gravity.CENTER);
             panel.addView(empty, new LinearLayout.LayoutParams(-1, dp(80)));
         } else {
-            for (StreamPane pane : new ArrayList<>(panes)) {
+            for (StreamPane pane : new ArrayList<>(managedPanes)) {
                 panel.addView(windowCard(pane, holder), new LinearLayout.LayoutParams(-1, dp(106)));
             }
         }
@@ -605,6 +788,8 @@ public class MainActivity extends Activity {
         panel.addView(title, new LinearLayout.LayoutParams(-1, dp(48)));
 
         panel.addView(dialogAction("Adicionar janela", R.drawable.ic_hs_plus, () -> { if (holder[0] != null) holder[0].dismiss(); addWindow(); }));
+        panel.addView(dialogAction("Ver grupos", R.drawable.ic_hs_grid, () -> { if (holder[0] != null) holder[0].dismiss(); showGroupsOverview(); }));
+        panel.addView(dialogAction("Novo grupo", R.drawable.ic_hs_plus, () -> { if (holder[0] != null) holder[0].dismiss(); createAndEnterGroup(); }));
         panel.addView(dialogAction("Gerenciar janelas", R.drawable.ic_hs_layout, () -> { if (holder[0] != null) holder[0].dismiss(); showWindowManager(); }));
         panel.addView(dialogAction("Recolher/abrir menu", R.drawable.ic_hs_menu, () -> { if (holder[0] != null) holder[0].dismiss(); toggleSidebar(); }));
         panel.addView(dialogAction("Trocar layout", R.drawable.ic_hs_resize, () -> { if (holder[0] != null) holder[0].dismiss(); cycleLayoutMode(); }));
@@ -830,10 +1015,25 @@ public class MainActivity extends Activity {
 
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("HubSyncBr 0.4.1 — Clean Core")
-                .setMessage("Atualização de limpeza visual: núcleo maior, topbar sem cards, controles por janela recolhidos em menu, barra de URL compacta e melhor uso da grade 2x2.")
+                .setTitle("HubSyncBr 0.5 — Groups Workspace")
+                .setMessage("Sistema inicial de grupos: a tela principal pode mostrar grupos, cada grupo abre um workspace próprio com janelas web nativas, gerenciador de janelas, layouts e base para agrupamento estilo Chrome.")
                 .setPositiveButton("OK", null)
                 .show();
+    }
+
+
+    private class WindowGroup {
+        final int id;
+        final String name;
+        final int accent;
+        final List<StreamPane> panes = new ArrayList<>();
+        final List<StreamPane> visible = new ArrayList<>();
+
+        WindowGroup(int idValue, String groupName, int groupAccent) {
+            id = idValue;
+            name = groupName;
+            accent = groupAccent;
+        }
     }
 
     private class StreamPane {
@@ -1116,7 +1316,7 @@ public class MainActivity extends Activity {
             desktopMode = !desktopMode;
             WebSettings settings = webView.getSettings();
             if (desktopMode) {
-                settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.4");
+                settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.5");
                 Toast.makeText(MainActivity.this, "Modo desktop", Toast.LENGTH_SHORT).show();
             } else {
                 settings.setUserAgentString(mobileUa);
@@ -1167,4 +1367,3 @@ public class MainActivity extends Activity {
         }
     }
 }
-
