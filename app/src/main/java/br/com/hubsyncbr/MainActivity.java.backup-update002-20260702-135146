@@ -13,11 +13,11 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.view.inputmethod.EditorInfo;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -29,20 +29,25 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
     private static final int BG = Color.rgb(7, 10, 18);
     private static final int PANEL = Color.rgb(16, 20, 32);
+    private static final int PANEL_2 = Color.rgb(22, 27, 43);
     private static final int TEXT = Color.rgb(245, 247, 255);
     private static final int MUTED = Color.rgb(175, 180, 200);
+    private static final int STROKE = Color.rgb(65, 78, 115);
     private static final int PURPLE = Color.rgb(139, 92, 246);
     private static final int BLUE = Color.rgb(63, 151, 255);
+    private static final int GREEN = Color.rgb(44, 211, 127);
+    private static final int RED = Color.rgb(255, 82, 82);
 
     private LinearLayout root;
     private LinearLayout shell;
@@ -50,15 +55,10 @@ public class MainActivity extends Activity {
     private LinearLayout mainArea;
     private LinearLayout topBar;
     private LinearLayout dualContainer;
-    private LinearLayout emptyState;
     private StreamPane paneA;
     private StreamPane paneB;
-
     private boolean verticalSplit = false;
     private boolean focusMode = false;
-    private boolean sidebarCollapsed = false;
-    private int sizeMode = 0; // 0 = igual, 1 = A maior, 2 = B maior
-
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout fullscreenHost;
@@ -110,19 +110,16 @@ public class MainActivity extends Activity {
 
         paneA = new StreamPane(this, "Screen 1", "YouTube", "https://www.youtube.com", PURPLE);
         paneB = new StreamPane(this, "Screen 2", "Twitch", "https://www.twitch.tv", BLUE);
-        emptyState = createEmptyState();
+
+        dualContainer.addView(paneA.container, new LinearLayout.LayoutParams(0, -1, 1));
+        LinearLayout.LayoutParams spacerParams = new LinearLayout.LayoutParams(dp(10), -1);
+        View spacer = new View(this);
+        spacer.setTag("split-spacer");
+        dualContainer.addView(spacer, spacerParams);
+        dualContainer.addView(paneB.container, new LinearLayout.LayoutParams(0, -1, 1));
 
         paneA.loadDefault();
         paneB.loadDefault();
-
-        // Em telas estreitas/retrato, começa com a sidebar recolhida para dar mais espaço ao núcleo.
-        if (getResources().getConfiguration().screenWidthDp < 700) {
-            sidebarCollapsed = true;
-            sidebar.setVisibility(View.GONE);
-            mainArea.setPadding(0, 0, 0, 0);
-        }
-
-        updatePanesLayout();
 
         FrameLayout outer = new FrameLayout(this);
         outer.addView(root, new FrameLayout.LayoutParams(-1, -1));
@@ -145,12 +142,12 @@ public class MainActivity extends Activity {
         sub.setPadding(dp(8), 0, dp(8), dp(10));
         side.addView(sub, new LinearLayout.LayoutParams(-1, dp(32)));
 
-        side.addView(navButton("⌂  Home", true, v -> Toast.makeText(this, "Home", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("▦  Multi Screen", false, v -> { if (focusMode) exitFocus(); updatePanesLayout(); }));
-        side.addView(navButton("♡  Favorites", false, v -> Toast.makeText(this, "Favoritos entram na 0.3", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("⚽  Sports", false, v -> Toast.makeText(this, "Modo esportes entra depois", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("◎  Browser", false, v -> addScreen()));
-        side.addView(navButton("⚙  Settings", false, v -> showAboutDialog()));
+        side.addView(navButton("⌂  Home", true));
+        side.addView(navButton("▦  Multi Screen", false));
+        side.addView(navButton("♡  Favorites", false));
+        side.addView(navButton("⚽  Sports", false));
+        side.addView(navButton("◎  Browser", false));
+        side.addView(navButton("⚙  Settings", false));
 
         View flex = new View(this);
         side.addView(flex, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -173,7 +170,7 @@ public class MainActivity extends Activity {
         return side;
     }
 
-    private TextView navButton(String text, boolean active, View.OnClickListener listener) {
+    private TextView navButton(String text, boolean active) {
         TextView b = label(text, 16, TEXT, true);
         b.setGravity(Gravity.CENTER_VERTICAL);
         b.setPadding(dp(18), 0, dp(12), 0);
@@ -184,7 +181,6 @@ public class MainActivity extends Activity {
         bg.setCornerRadius(dp(14));
         bg.setStroke(1, active ? Color.rgb(110, 90, 255) : Color.rgb(31, 38, 57));
         b.setBackground(bg);
-        b.setOnClickListener(listener);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(62));
         params.setMargins(0, dp(5), 0, dp(5));
         b.setLayoutParams(params);
@@ -197,34 +193,17 @@ public class MainActivity extends Activity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(0, 0, 0, dp(8));
 
-        Button menu = chip("☰", MUTED);
-        menu.setOnClickListener(v -> toggleSidebar());
-        bar.addView(menu, new LinearLayout.LayoutParams(dp(52), dp(42)));
-
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
-        titles.setPadding(dp(8), 0, 0, 0);
         TextView title = label("▯  Dual Screen", 20, TEXT, true);
         TextView desc = label("Watch two official web streams at the same time", 12, MUTED, false);
         titles.addView(title, new LinearLayout.LayoutParams(-1, dp(28)));
         titles.addView(desc, new LinearLayout.LayoutParams(-1, dp(24)));
         bar.addView(titles, new LinearLayout.LayoutParams(0, -1, 1));
 
-        Button add = chip("＋ Tela", BLUE);
-        add.setOnClickListener(v -> addScreen());
-        bar.addView(add, new LinearLayout.LayoutParams(dp(92), dp(42)));
-
-        Button swap = chip("↔  Swap", PURPLE);
+        Button swap = chip("↔  Swap Screens", PURPLE);
         swap.setOnClickListener(v -> swapScreens());
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(dp(112), dp(42));
-        slp.setMargins(dp(8), 0, 0, 0);
-        bar.addView(swap, slp);
-
-        Button size = chip("⇆ Size", BLUE);
-        size.setOnClickListener(v -> cycleSizeMode());
-        LinearLayout.LayoutParams zlp = new LinearLayout.LayoutParams(dp(92), dp(42));
-        zlp.setMargins(dp(8), 0, 0, 0);
-        bar.addView(size, zlp);
+        bar.addView(swap, new LinearLayout.LayoutParams(dp(160), dp(42)));
 
         Button layout = chip("▤", BLUE);
         layout.setOnClickListener(v -> toggleSplitOrientation());
@@ -233,132 +212,30 @@ public class MainActivity extends Activity {
         bar.addView(layout, lp);
 
         Button more = chip("⋮", MUTED);
-        more.setOnClickListener(v -> showMoreDialog());
+        more.setOnClickListener(v -> showAboutDialog());
         LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(dp(58), dp(42));
         mlp.setMargins(dp(8), 0, 0, 0);
         bar.addView(more, mlp);
         return bar;
     }
 
-    private LinearLayout createEmptyState() {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setGravity(Gravity.CENTER);
-        box.setPadding(dp(18), dp(18), dp(18), dp(18));
-        box.setBackground(cardBg(Color.rgb(10, 13, 23), Color.rgb(45, 56, 86), dp(18), 1));
-
-        TextView plus = label("＋", 48, BLUE, true);
-        plus.setGravity(Gravity.CENTER);
-        TextView title = label("Adicionar tela", 22, TEXT, true);
-        title.setGravity(Gravity.CENTER);
-        TextView desc = label("Abra um site, use como navegador ou combine com outra transmissão.", 13, MUTED, false);
-        desc.setGravity(Gravity.CENTER);
-        Button add = chip("＋ Nova tela", PURPLE);
-        add.setOnClickListener(v -> addScreen());
-
-        box.addView(plus, new LinearLayout.LayoutParams(-1, dp(62)));
-        box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
-        box.addView(desc, new LinearLayout.LayoutParams(-1, dp(36)));
-        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(160), dp(44));
-        alp.setMargins(0, dp(18), 0, 0);
-        box.addView(add, alp);
-        return box;
-    }
-
-    private void toggleSidebar() {
-        sidebarCollapsed = !sidebarCollapsed;
-        sidebar.setVisibility(sidebarCollapsed ? View.GONE : View.VISIBLE);
-        mainArea.setPadding(sidebarCollapsed ? 0 : dp(12), 0, 0, 0);
-        Toast.makeText(this, sidebarCollapsed ? "Menu recolhido" : "Menu aberto", Toast.LENGTH_SHORT).show();
-    }
-
     private void toggleSplitOrientation() {
         verticalSplit = !verticalSplit;
-        updatePanesLayout();
+        dualContainer.setOrientation(verticalSplit ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        View spacer = dualContainer.findViewWithTag("split-spacer");
+        if (spacer != null) {
+            ViewGroup.LayoutParams params = spacer.getLayoutParams();
+            if (params instanceof LinearLayout.LayoutParams) {
+                LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) params;
+                lp.width = verticalSplit ? -1 : dp(10);
+                lp.height = verticalSplit ? dp(10) : -1;
+                spacer.setLayoutParams(lp);
+            }
+        }
         Toast.makeText(this, verticalSplit ? "Layout vertical ativado" : "Layout horizontal ativado", Toast.LENGTH_SHORT).show();
     }
 
-    private void cycleSizeMode() {
-        sizeMode = (sizeMode + 1) % 3;
-        updatePanesLayout();
-        String msg = sizeMode == 0 ? "Telas 50/50" : sizeMode == 1 ? "Tela A maior" : "Tela B maior";
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
-    }
-
-    private void updatePanesLayout() {
-        if (focusMode || dualContainer == null) return;
-        dualContainer.removeAllViews();
-        dualContainer.setOrientation(verticalSplit ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
-
-        int activeCount = (paneA.active ? 1 : 0) + (paneB.active ? 1 : 0);
-        if (activeCount == 0) {
-            dualContainer.addView(emptyState, new LinearLayout.LayoutParams(-1, -1));
-            return;
-        }
-
-        if (paneA.active) paneA.container.setVisibility(View.VISIBLE);
-        if (paneB.active) paneB.container.setVisibility(View.VISIBLE);
-
-        if (activeCount == 1) {
-            StreamPane only = paneA.active ? paneA : paneB;
-            dualContainer.addView(only.container, new LinearLayout.LayoutParams(-1, -1));
-            return;
-        }
-
-        float weightA = 1f;
-        float weightB = 1f;
-        if (sizeMode == 1) { weightA = 1.7f; weightB = 1f; }
-        if (sizeMode == 2) { weightA = 1f; weightB = 1.7f; }
-
-        dualContainer.addView(paneA.container, new LinearLayout.LayoutParams(0, -1, weightA));
-        View spacer = new View(this);
-        spacer.setTag("split-spacer");
-        LinearLayout.LayoutParams sp = verticalSplit ? new LinearLayout.LayoutParams(-1, dp(10)) : new LinearLayout.LayoutParams(dp(10), -1);
-        dualContainer.addView(spacer, sp);
-        dualContainer.addView(paneB.container, new LinearLayout.LayoutParams(0, -1, weightB));
-    }
-
-    private void addScreen() {
-        if (!paneA.active) {
-            activatePane(paneA);
-            return;
-        }
-        if (!paneB.active) {
-            activatePane(paneB);
-            return;
-        }
-        Toast.makeText(this, "Limite da versão grátis: 2 telas. Mais telas entram depois.", Toast.LENGTH_LONG).show();
-    }
-
-    private void activatePane(StreamPane pane) {
-        if (focusMode) exitFocus();
-        pane.active = true;
-        pane.container.setVisibility(View.VISIBLE);
-        if (pane.isBlank()) pane.loadUrl("https://www.google.com");
-        updatePanesLayout();
-    }
-
-    private void closePane(StreamPane pane) {
-        if (focusMode) exitFocus();
-        pane.active = false;
-        try { pane.webView.loadUrl("about:blank"); } catch (Exception ignored) {}
-        updatePanesLayout();
-    }
-
-    private void closeAllPanes() {
-        if (focusMode) exitFocus();
-        paneA.active = false;
-        paneB.active = false;
-        try { paneA.webView.loadUrl("about:blank"); } catch (Exception ignored) {}
-        try { paneB.webView.loadUrl("about:blank"); } catch (Exception ignored) {}
-        updatePanesLayout();
-    }
-
     private void swapScreens() {
-        if (!paneA.active || !paneB.active) {
-            Toast.makeText(this, "Abra duas telas para trocar", Toast.LENGTH_SHORT).show();
-            return;
-        }
         String a = paneA.currentUrl();
         String b = paneB.currentUrl();
         paneA.loadUrl(b);
@@ -366,7 +243,6 @@ public class MainActivity extends Activity {
     }
 
     private void enterFocus(StreamPane pane) {
-        if (!pane.active) return;
         focusMode = true;
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
@@ -383,11 +259,14 @@ public class MainActivity extends Activity {
 
     private void exitFocus() {
         focusMode = false;
-        sidebar.setVisibility(sidebarCollapsed ? View.GONE : View.VISIBLE);
+        sidebar.setVisibility(View.VISIBLE);
         topBar.setVisibility(View.VISIBLE);
+        paneA.container.setVisibility(View.VISIBLE);
+        paneB.container.setVisibility(View.VISIBLE);
         paneA.focusButton.setText("⛶ Foco");
         paneB.focusButton.setText("⛶ Foco");
-        updatePanesLayout();
+        View spacer = dualContainer.findViewWithTag("split-spacer");
+        if (spacer != null) spacer.setVisibility(View.VISIBLE);
     }
 
     private TextView label(String text, int sp, int color, boolean bold) {
@@ -407,7 +286,6 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setTextSize(12);
         b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        b.setPadding(0, 0, 0, 0);
         b.setBackground(cardBg(Color.rgb(19, 24, 38), accent, dp(10), 2));
         return b;
     }
@@ -425,19 +303,10 @@ public class MainActivity extends Activity {
     }
 
     private String normalizeUrl(String raw) {
-        if (raw == null || raw.trim().isEmpty()) return "https://www.google.com";
+        if (raw == null || raw.trim().isEmpty()) return "https://www.youtube.com";
         String u = raw.trim();
-        if (u.equals("about:blank")) return u;
-        if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("file://")) return u;
-
-        boolean looksLikeUrl = u.contains(".") && !u.contains(" ");
-        if (looksLikeUrl) return "https://" + u;
-
-        try {
-            return "https://www.google.com/search?q=" + URLEncoder.encode(u, "UTF-8");
-        } catch (Exception e) {
-            return "https://www.google.com/search?q=" + u.replace(" ", "+");
-        }
+        if (!u.startsWith("http://") && !u.startsWith("https://")) u = "https://" + u;
+        return u;
     }
 
     private void openExternal(String url) {
@@ -451,44 +320,19 @@ public class MainActivity extends Activity {
     private void showLegalNoticeOnce() {
         SharedPreferences prefs = getSharedPreferences("hub", MODE_PRIVATE);
         if (!prefs.getBoolean("legal_ok", false)) {
-            showLegalDialog(() -> prefs.edit().putBoolean("legal_ok", true).apply());
+            new AlertDialog.Builder(this)
+                    .setTitle("HubSyncBr — uso transparente")
+                    .setMessage("O HubSyncBr não hospeda, retransmite, baixa, extrai ou modifica transmissões. Cada janela abre o site escolhido pelo usuário e respeita login, anúncios, créditos, player e regras da plataforma original.")
+                    .setPositiveButton("Entendi", (d, w) -> prefs.edit().putBoolean("legal_ok", true).apply())
+                    .show();
         }
-    }
-
-    private void showLegalDialog(final Runnable onOk) {
-        new AlertDialog.Builder(this)
-                .setTitle("HubSyncBr — uso transparente")
-                .setMessage("O HubSyncBr não hospeda, retransmite, baixa, extrai ou modifica transmissões. Cada janela abre o site escolhido pelo usuário e respeita login, anúncios, créditos, player e regras da plataforma original.")
-                .setPositiveButton("Entendi", (d, w) -> { if (onOk != null) onOk.run(); })
-                .show();
     }
 
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("HubSyncBr 0.2 — UI Core")
-                .setMessage("Atualização com menu recolhível, fechamento real de telas, botão adicionar, modo 1 tela/2 telas, tamanho A/B e busca inteligente na barra de URL. A tela cheia do player do site continua respeitando o comportamento do próprio site.")
+                .setTitle("HubSyncBr 0.1 — Dual View")
+                .setMessage("MVP com duas janelas WebView, modo foco, troca de telas, atalhos e fullscreen do player quando o site permitir. Compatibilidade depende das regras de cada site/plataforma.")
                 .setPositiveButton("OK", null)
-                .show();
-    }
-
-    private void showMoreDialog() {
-        String[] items = new String[]{"＋ Adicionar tela", "⛶ Recolher/abrir menu", "⇆ Ajustar tamanho", "⟳ Recarregar telas", "× Fechar todas", "ℹ Sobre", "⚖ Aviso legal"};
-        new AlertDialog.Builder(this)
-                .setTitle("HubSyncBr")
-                .setItems(items, (dialog, which) -> {
-                    switch (which) {
-                        case 0: addScreen(); break;
-                        case 1: toggleSidebar(); break;
-                        case 2: cycleSizeMode(); break;
-                        case 3:
-                            if (paneA.active) paneA.webView.reload();
-                            if (paneB.active) paneB.webView.reload();
-                            break;
-                        case 4: closeAllPanes(); break;
-                        case 5: showAboutDialog(); break;
-                        case 6: showLegalDialog(null); break;
-                    }
-                })
                 .show();
     }
 
@@ -496,19 +340,16 @@ public class MainActivity extends Activity {
         final LinearLayout container;
         final TextView title;
         final EditText urlBar;
-        final WebView webView;
+        WebView webView;
         final Button focusButton;
         final Button muteButton;
-        boolean active = true;
         boolean desktopMode = false;
         boolean muted = false;
         final String defaultUrl;
-        final String mobileUa;
+        String mobileUa;
 
         StreamPane(Context ctx, String slot, String name, String url, int accent) {
             defaultUrl = url;
-            webView = new WebView(ctx);
-
             container = new LinearLayout(ctx);
             container.setOrientation(LinearLayout.VERTICAL);
             container.setPadding(dp(6), dp(6), dp(6), dp(6));
@@ -522,7 +363,7 @@ public class MainActivity extends Activity {
             header.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
             TextView close = label("×", 22, MUTED, true);
             close.setGravity(Gravity.CENTER);
-            close.setOnClickListener(v -> closePane(this));
+            close.setOnClickListener(v -> webView.loadUrl("about:blank"));
             header.addView(close, new LinearLayout.LayoutParams(dp(36), -1));
             container.addView(header, new LinearLayout.LayoutParams(-1, dp(38)));
 
@@ -554,20 +395,9 @@ public class MainActivity extends Activity {
             urlBar.setTextSize(12);
             urlBar.setTextColor(TEXT);
             urlBar.setHintTextColor(MUTED);
-            urlBar.setHint("Digite URL ou pesquisa");
-            urlBar.setImeOptions(EditorInfo.IME_ACTION_GO);
-            urlBar.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
             urlBar.setPadding(dp(12), 0, dp(12), 0);
             urlBar.setBackground(cardBg(Color.rgb(18, 22, 32), Color.rgb(36, 43, 64), dp(24), 1));
             urlBar.setSelectAllOnFocus(true);
-            urlBar.setOnEditorActionListener((v, actionId, event) -> {
-                boolean enter = event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_UP;
-                if (actionId == EditorInfo.IME_ACTION_GO || enter) {
-                    loadUrl(urlBar.getText().toString());
-                    return true;
-                }
-                return false;
-            });
             toolbar.addView(urlBar, new LinearLayout.LayoutParams(0, dp(42), 1));
 
             Button go = miniButton("Go");
@@ -575,6 +405,7 @@ public class MainActivity extends Activity {
             toolbar.addView(go, new LinearLayout.LayoutParams(dp(54), dp(42)));
             container.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(54)));
 
+            webView = new WebView(ctx);
             configureWebView(webView);
             mobileUa = webView.getSettings().getUserAgentString();
             container.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -645,7 +476,7 @@ public class MainActivity extends Activity {
                 @Override
                 public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                     String u = request.getUrl().toString();
-                    if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("about:")) return false;
+                    if (u.startsWith("http://") || u.startsWith("https://")) return false;
                     openExternal(u);
                     return true;
                 }
@@ -688,9 +519,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> {
                         List<String> grants = new ArrayList<>();
                         for (String r : request.getResources()) {
-                            if (PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID.equals(r)
-                                    || PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)
-                                    || PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) {
+                            if (PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID.equals(r)) {
                                 grants.add(r);
                             }
                         }
@@ -711,13 +540,8 @@ public class MainActivity extends Activity {
 
         String currentUrl() {
             String current = webView.getUrl();
-            if (current == null || current.trim().isEmpty()) current = urlBar.getText().toString();
+            if (current == null || current.trim().isEmpty() || current.equals("about:blank")) current = urlBar.getText().toString();
             return normalizeUrl(current);
-        }
-
-        boolean isBlank() {
-            String current = webView.getUrl();
-            return current == null || current.trim().isEmpty() || current.equals("about:blank");
         }
 
         void toggleMute() {
@@ -735,7 +559,7 @@ public class MainActivity extends Activity {
             desktopMode = !desktopMode;
             WebSettings settings = webView.getSettings();
             if (desktopMode) {
-                settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.2");
+                settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.1");
                 Toast.makeText(MainActivity.this, "Modo desktop", Toast.LENGTH_SHORT).show();
             } else {
                 settings.setUserAgentString(mobileUa);
@@ -755,7 +579,6 @@ public class MainActivity extends Activity {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
         if (customViewCallback != null) customViewCallback.onCustomViewHidden();
         customViewCallback = null;
-        if (focusMode) exitFocus();
     }
 
     @Override
@@ -768,12 +591,8 @@ public class MainActivity extends Activity {
             exitFocus();
             return;
         }
-        if (paneA != null && paneA.active && paneA.webView.canGoBack()) {
+        if (paneA.webView.canGoBack()) {
             paneA.webView.goBack();
-            return;
-        }
-        if (paneB != null && paneB.active && paneB.webView.canGoBack()) {
-            paneB.webView.goBack();
             return;
         }
         super.onBackPressed();
@@ -782,7 +601,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        try { if (paneA != null) paneA.webView.destroy(); } catch (Exception ignored) {}
-        try { if (paneB != null) paneB.webView.destroy(); } catch (Exception ignored) {}
+        try { paneA.webView.destroy(); } catch (Exception ignored) {}
+        try { paneB.webView.destroy(); } catch (Exception ignored) {}
     }
 }
