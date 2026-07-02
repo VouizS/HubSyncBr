@@ -13,6 +13,7 @@ import android.view.Window;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.AnimationSet;
 import android.view.animation.ScaleAnimation;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -56,14 +57,13 @@ public class SplashActivity extends Activity {
         root.setPadding(dp(24), dp(24), dp(24), dp(24));
         root.setBackgroundColor(BG);
 
-        TextView logo = new TextView(this);
-        logo.setGravity(Gravity.CENTER);
-        logo.setText("▣▣");
-        logo.setTextSize(50);
-        logo.setTypeface(Typeface.DEFAULT_BOLD);
-        logo.setTextColor(BLUE);
-        logo.setBackground(cardBg(Color.rgb(12, 16, 28), PURPLE, dp(26), 1));
-        LinearLayout.LayoutParams lpLogo = new LinearLayout.LayoutParams(dp(116), dp(116));
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.hubsyncbr_mark);
+        logo.setAdjustViewBounds(true);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        logo.setPadding(dp(16), dp(16), dp(16), dp(16));
+        logo.setBackground(cardBg(Color.rgb(10, 14, 26), PURPLE, dp(28), 1));
+        LinearLayout.LayoutParams lpLogo = new LinearLayout.LayoutParams(dp(126), dp(126));
         root.addView(logo, lpLogo);
 
         TextView title = new TextView(this);
@@ -92,11 +92,11 @@ public class SplashActivity extends Activity {
         lpLoad.setMargins(0, dp(12), 0, 0);
         root.addView(loading, lpLoad);
 
-        ViewCompatFade(root);
+        animateIn(root);
         setContentView(root);
     }
 
-    private void ViewCompatFade(LinearLayout root) {
+    private void animateIn(LinearLayout root) {
         AnimationSet set = new AnimationSet(true);
         AlphaAnimation fade = new AlphaAnimation(0f, 1f);
         fade.setDuration(620);
