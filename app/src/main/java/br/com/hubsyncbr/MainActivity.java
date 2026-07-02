@@ -114,11 +114,11 @@ public class MainActivity extends Activity {
 
         mainArea = new LinearLayout(this);
         mainArea.setOrientation(LinearLayout.VERTICAL);
-        mainArea.setPadding(dp(12), 0, 0, 0);
+        mainArea.setPadding(dp(6), 0, 0, 0);
         shell.addView(mainArea, new LinearLayout.LayoutParams(0, -1, 1));
 
         topBar = createTopBar();
-        mainArea.addView(topBar, new LinearLayout.LayoutParams(-1, dp(58)));
+        mainArea.addView(topBar, new LinearLayout.LayoutParams(-1, dp(48)));
 
         windowContainer = new LinearLayout(this);
         windowContainer.setOrientation(LinearLayout.HORIZONTAL);
@@ -216,56 +216,53 @@ public class MainActivity extends Activity {
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(0, 0, 0, dp(8));
+        bar.setPadding(0, 0, 0, dp(4));
 
-        Button menu = chip("", MUTED);
-        setButtonIcon(menu, R.drawable.ic_hs_menu, ICON_NORMAL, 20);
-        menu.setOnClickListener(v -> toggleSidebar());
-        bar.addView(menu, new LinearLayout.LayoutParams(dp(52), dp(42)));
+        TextView menu = topIcon(R.drawable.ic_hs_menu, ICON_NORMAL, "Abrir/recolher menu", v -> toggleSidebar());
+        bar.addView(menu, new LinearLayout.LayoutParams(dp(44), dp(40)));
 
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
-        titles.setPadding(dp(8), 0, 0, 0);
-        headerTitle = label("Hub View", 20, TEXT, true);
-        setLeftIcon(headerTitle, R.drawable.ic_hs_grid, ICON_BLUE, 21);
-        headerDesc = label("Gerencie janelas web, multitela e grupos futuros", 12, MUTED, false);
-        titles.addView(headerTitle, new LinearLayout.LayoutParams(-1, dp(28)));
-        titles.addView(headerDesc, new LinearLayout.LayoutParams(-1, dp(24)));
+        titles.setPadding(dp(6), 0, 0, 0);
+        headerTitle = label("Hub View", 18, TEXT, true);
+        setLeftIcon(headerTitle, R.drawable.ic_hs_grid, ICON_BLUE, 19);
+        headerDesc = label("Workspace de janelas web", 11, MUTED, false);
+        titles.addView(headerTitle, new LinearLayout.LayoutParams(-1, dp(24)));
+        titles.addView(headerDesc, new LinearLayout.LayoutParams(-1, dp(18)));
         bar.addView(titles, new LinearLayout.LayoutParams(0, -1, 1));
 
-        Button add = chip("Janela", BLUE);
-        setButtonIcon(add, R.drawable.ic_hs_plus, ICON_ACTIVE, 17);
-        add.setOnClickListener(v -> addWindow());
-        bar.addView(add, new LinearLayout.LayoutParams(dp(104), dp(42)));
+        TextView add = topIcon(R.drawable.ic_hs_plus, ICON_ACTIVE, "Nova janela", v -> addWindow());
+        bar.addView(add, topIconParams());
 
-        Button swap = chip("Swap", PURPLE);
-        setButtonIcon(swap, R.drawable.ic_hs_swap, ICON_ACTIVE, 17);
-        swap.setOnClickListener(v -> swapFirstTwoVisible());
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(dp(108), dp(42));
-        slp.setMargins(dp(8), 0, 0, 0);
-        bar.addView(swap, slp);
+        TextView swap = topIcon(R.drawable.ic_hs_swap, ICON_ACTIVE, "Trocar janelas", v -> swapFirstTwoVisible());
+        bar.addView(swap, topIconParams());
 
-        Button size = chip("Layout", BLUE);
-        setButtonIcon(size, R.drawable.ic_hs_resize, ICON_NORMAL, 17);
-        size.setOnClickListener(v -> cycleLayoutMode());
-        LinearLayout.LayoutParams zlp = new LinearLayout.LayoutParams(dp(104), dp(42));
-        zlp.setMargins(dp(8), 0, 0, 0);
-        bar.addView(size, zlp);
+        TextView size = topIcon(R.drawable.ic_hs_resize, ICON_NORMAL, "Trocar layout", v -> cycleLayoutMode());
+        bar.addView(size, topIconParams());
 
-        Button manager = chip("", BLUE);
-        setButtonIcon(manager, R.drawable.ic_hs_layout, ICON_NORMAL, 19);
-        manager.setOnClickListener(v -> showWindowManager());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(58), dp(42));
-        lp.setMargins(dp(8), 0, 0, 0);
-        bar.addView(manager, lp);
+        TextView manager = topIcon(R.drawable.ic_hs_layout, ICON_NORMAL, "Gerenciar janelas", v -> showWindowManager());
+        bar.addView(manager, topIconParams());
 
-        Button more = chip("", MUTED);
-        setButtonIcon(more, R.drawable.ic_hs_more, ICON_NORMAL, 20);
-        more.setOnClickListener(v -> showMorePanel());
-        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(dp(58), dp(42));
-        mlp.setMargins(dp(8), 0, 0, 0);
-        bar.addView(more, mlp);
+        TextView more = topIcon(R.drawable.ic_hs_more, ICON_NORMAL, "Mais opções", v -> showMorePanel());
+        bar.addView(more, topIconParams());
         return bar;
+    }
+
+    private LinearLayout.LayoutParams topIconParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(44), dp(40));
+        lp.setMargins(dp(8), 0, 0, 0);
+        return lp;
+    }
+
+    private TextView topIcon(int iconRes, int color, String tip, View.OnClickListener listener) {
+        TextView b = label("", 18, color, true);
+        b.setGravity(Gravity.CENTER);
+        setCenterIcon(b, iconRes, color, 22);
+        b.setPadding(0, 0, 0, 0);
+        b.setBackground(cardBg(Color.TRANSPARENT, Color.TRANSPARENT, dp(12), 0));
+        b.setOnClickListener(listener);
+        attachTip(b, tip);
+        return b;
     }
 
     private LinearLayout createEmptyState() {
@@ -404,6 +401,13 @@ public class MainActivity extends Activity {
             return;
         }
 
+        // Quando o núcleo entra em 3/4 janelas, o app prioriza espaço de conteúdo.
+        if (visiblePanes.size() >= 3 && !sidebarCollapsed) {
+            sidebarCollapsed = true;
+            sidebar.setVisibility(View.GONE);
+            mainArea.setPadding(0, 0, 0, 0);
+        }
+
         if (visiblePanes.size() == 1) {
             windowContainer.setOrientation(LinearLayout.VERTICAL);
             windowContainer.addView(visiblePanes.get(0).container, new LinearLayout.LayoutParams(-1, -1));
@@ -428,11 +432,11 @@ public class MainActivity extends Activity {
 
         if (verticalSplit) {
             windowContainer.addView(first.container, new LinearLayout.LayoutParams(-1, 0, weightA));
-            windowContainer.addView(spacer(true), new LinearLayout.LayoutParams(-1, dp(10)));
+            windowContainer.addView(spacer(true), new LinearLayout.LayoutParams(-1, dp(6)));
             windowContainer.addView(second.container, new LinearLayout.LayoutParams(-1, 0, weightB));
         } else {
             windowContainer.addView(first.container, new LinearLayout.LayoutParams(0, -1, weightA));
-            windowContainer.addView(spacer(false), new LinearLayout.LayoutParams(dp(10), -1));
+            windowContainer.addView(spacer(false), new LinearLayout.LayoutParams(dp(6), -1));
             windowContainer.addView(second.container, new LinearLayout.LayoutParams(0, -1, weightB));
         }
     }
@@ -444,7 +448,7 @@ public class MainActivity extends Activity {
         windowContainer.addView(row1, new LinearLayout.LayoutParams(-1, 0, 1));
         if (visiblePanes.size() > 2) {
             View gap = new View(this);
-            windowContainer.addView(gap, new LinearLayout.LayoutParams(-1, dp(10)));
+            windowContainer.addView(gap, new LinearLayout.LayoutParams(-1, dp(6)));
             windowContainer.addView(row2, new LinearLayout.LayoutParams(-1, 0, 1));
         }
 
@@ -461,7 +465,7 @@ public class MainActivity extends Activity {
     }
 
     private void addPaneToRow(LinearLayout row, StreamPane pane) {
-        if (row.getChildCount() > 0) row.addView(spacer(false), new LinearLayout.LayoutParams(dp(10), -1));
+        if (row.getChildCount() > 0) row.addView(spacer(false), new LinearLayout.LayoutParams(dp(6), -1));
         row.addView(pane.container, new LinearLayout.LayoutParams(0, -1, 1));
     }
 
@@ -503,7 +507,6 @@ public class MainActivity extends Activity {
         topBar.setVisibility(View.GONE);
         for (StreamPane p : visiblePanes) {
             p.container.setVisibility(p == pane ? View.VISIBLE : View.GONE);
-            p.focusButton.setText(p == pane ? "Voltar" : "Foco");
         }
         for (int i = 0; i < windowContainer.getChildCount(); i++) {
             View child = windowContainer.getChildAt(i);
@@ -515,7 +518,6 @@ public class MainActivity extends Activity {
         focusMode = false;
         sidebar.setVisibility(sidebarCollapsed ? View.GONE : View.VISIBLE);
         topBar.setVisibility(View.VISIBLE);
-        for (StreamPane p : panes) p.focusButton.setText("Foco");
         updateWindowLayout();
     }
 
@@ -621,6 +623,56 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
+    private void showPaneActions(StreamPane pane) {
+        final AlertDialog[] holder = new AlertDialog[1];
+        LinearLayout panel = dialogPanel();
+        TextView title = label(pane.displayTitle(), 20, TEXT, true);
+        setLeftIcon(title, R.drawable.ic_hs_layout, ICON_BLUE, 22);
+        panel.addView(title, new LinearLayout.LayoutParams(-1, dp(46)));
+
+        panel.addView(dialogAction(focusMode ? "Voltar do foco" : "Focar janela", R.drawable.ic_hs_focus, () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            if (focusMode) exitFocus(); else enterFocus(pane);
+        }));
+        panel.addView(dialogAction(pane.muted ? "Ativar som" : "Mutar janela", pane.muted ? R.drawable.ic_hs_volume : R.drawable.ic_hs_mute, () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            pane.toggleMute();
+        }));
+        panel.addView(dialogAction("Volume 45%", R.drawable.ic_hs_volume, () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            pane.cycleVolume();
+        }));
+        panel.addView(dialogAction(pane.desktopMode ? "Modo mobile" : "Modo desktop", R.drawable.ic_hs_desktop, () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            pane.toggleDesktopMode();
+        }));
+        panel.addView(dialogAction("Abrir externo", R.drawable.ic_hs_external, () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            openExternal(pane.currentUrl());
+        }));
+        panel.addView(dialogAction("Recarregar", R.drawable.ic_hs_reload, () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            pane.webView.reload();
+        }));
+        panel.addView(dialogAction("Ocultar/minimizar", R.drawable.ic_hs_close, () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            hidePane(pane);
+        }));
+        panel.addView(dialogAction("Fechar janela", R.drawable.ic_hs_close, () -> {
+            if (holder[0] != null) holder[0].dismiss();
+            closePane(pane);
+        }));
+
+        AlertDialog dialog = new AlertDialog.Builder(this).create();
+        holder[0] = dialog;
+        dialog.setView(panel);
+        dialog.setOnShowListener(d -> {
+            Window w = dialog.getWindow();
+            if (w != null) w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        });
+        dialog.show();
+    }
+
     private void reloadVisible() {
         for (StreamPane pane : visiblePanes) {
             try { pane.webView.reload(); } catch (Exception ignored) {}
@@ -679,6 +731,13 @@ public class MainActivity extends Activity {
         d.setTint(color);
         d.setBounds(0, 0, dp(sizeDp), dp(sizeDp));
         return d;
+    }
+
+    private void attachTip(View view, String message) {
+        view.setOnLongClickListener(v -> {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            return true;
+        });
     }
 
     private void setLeftIcon(TextView target, int resId, int color, int sizeDp) {
@@ -771,8 +830,8 @@ public class MainActivity extends Activity {
 
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("HubSyncBr 0.4 — Window Manager")
-                .setMessage("Atualização maior: gerenciador de janelas, até 4 janelas visíveis, até 8 abertas/minimizadas, popup visual melhorado, botão + Janela, modo grade 2x2 e base para grupos estilo Chrome.")
+                .setTitle("HubSyncBr 0.4.1 — Clean Core")
+                .setMessage("Atualização de limpeza visual: núcleo maior, topbar sem cards, controles por janela recolhidos em menu, barra de URL compacta e melhor uso da grade 2x2.")
                 .setPositiveButton("OK", null)
                 .show();
     }
@@ -803,59 +862,69 @@ public class MainActivity extends Activity {
 
             container = new LinearLayout(ctx);
             container.setOrientation(LinearLayout.VERTICAL);
-            container.setPadding(dp(6), dp(6), dp(6), dp(6));
-            container.setBackground(cardBg(Color.rgb(10, 13, 23), accent, dp(12), 1));
+            container.setPadding(dp(4), dp(4), dp(4), dp(4));
+            container.setBackground(cardBg(Color.rgb(10, 13, 23), accent, dp(10), 1));
 
             LinearLayout header = new LinearLayout(ctx);
             header.setOrientation(LinearLayout.HORIZONTAL);
             header.setGravity(Gravity.CENTER_VERTICAL);
-            header.setPadding(dp(8), 0, dp(8), 0);
-            title = label("", 13, TEXT, true);
+            header.setPadding(dp(6), 0, dp(4), 0);
+            title = label("", 12, TEXT, true);
             header.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
-            TextView close = label("", 22, MUTED, true);
-            setCenterIcon(close, R.drawable.ic_hs_close, ICON_NORMAL, 20);
+            TextView actions = label("", 18, MUTED, true);
+            setCenterIcon(actions, R.drawable.ic_hs_more, ICON_NORMAL, 18);
+            actions.setGravity(Gravity.CENTER);
+            actions.setOnClickListener(v -> showPaneActions(this));
+            attachTip(actions, "Ações da janela");
+            header.addView(actions, new LinearLayout.LayoutParams(dp(30), -1));
+            TextView close = label("", 18, MUTED, true);
+            setCenterIcon(close, R.drawable.ic_hs_close, ICON_NORMAL, 18);
             close.setGravity(Gravity.CENTER);
             close.setOnClickListener(v -> closePane(this));
-            header.addView(close, new LinearLayout.LayoutParams(dp(36), -1));
-            container.addView(header, new LinearLayout.LayoutParams(-1, dp(34)));
+            attachTip(close, "Fechar janela");
+            header.addView(close, new LinearLayout.LayoutParams(dp(30), -1));
+            container.addView(header, new LinearLayout.LayoutParams(-1, dp(28)));
             updateHeader();
 
             View accentLine = new View(ctx);
             accentLine.setBackgroundColor(accent);
-            container.addView(accentLine, new LinearLayout.LayoutParams(-1, dp(3)));
+            container.addView(accentLine, new LinearLayout.LayoutParams(-1, dp(2)));
 
             LinearLayout toolbar = new LinearLayout(ctx);
             toolbar.setOrientation(LinearLayout.HORIZONTAL);
             toolbar.setGravity(Gravity.CENTER_VERTICAL);
-            toolbar.setPadding(dp(4), dp(5), dp(4), dp(5));
-            toolbar.setBackgroundColor(Color.rgb(11, 15, 25));
+            toolbar.setPadding(dp(2), dp(3), dp(2), dp(3));
+            toolbar.setBackgroundColor(Color.rgb(9, 13, 23));
 
             Button back = miniButton("");
             setButtonIcon(back, R.drawable.ic_hs_back, ICON_NORMAL, 18);
             back.setOnClickListener(v -> { if (webView.canGoBack()) webView.goBack(); });
-            toolbar.addView(back, new LinearLayout.LayoutParams(dp(42), dp(42)));
+            attachTip(back, "Voltar");
+            toolbar.addView(back, new LinearLayout.LayoutParams(dp(34), dp(36)));
 
             Button forward = miniButton("");
             setButtonIcon(forward, R.drawable.ic_hs_forward, ICON_NORMAL, 18);
             forward.setOnClickListener(v -> { if (webView.canGoForward()) webView.goForward(); });
-            toolbar.addView(forward, new LinearLayout.LayoutParams(dp(42), dp(42)));
+            attachTip(forward, "Avançar");
+            toolbar.addView(forward, new LinearLayout.LayoutParams(dp(34), dp(36)));
 
             Button reload = miniButton("");
             setButtonIcon(reload, R.drawable.ic_hs_reload, ICON_NORMAL, 18);
             reload.setOnClickListener(v -> webView.reload());
-            toolbar.addView(reload, new LinearLayout.LayoutParams(dp(42), dp(42)));
+            attachTip(reload, "Recarregar");
+            toolbar.addView(reload, new LinearLayout.LayoutParams(dp(34), dp(36)));
 
             urlBar = new EditText(ctx);
             urlBar.setSingleLine(true);
             urlBar.setText(url);
-            urlBar.setTextSize(12);
+            urlBar.setTextSize(11);
             urlBar.setTextColor(TEXT);
             urlBar.setHintTextColor(MUTED);
             urlBar.setHint("URL ou pesquisa");
             urlBar.setImeOptions(EditorInfo.IME_ACTION_GO);
             urlBar.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
-            urlBar.setPadding(dp(12), 0, dp(12), 0);
-            urlBar.setBackground(cardBg(Color.rgb(18, 22, 32), Color.rgb(36, 43, 64), dp(24), 1));
+            urlBar.setPadding(dp(10), 0, dp(10), 0);
+            urlBar.setBackground(cardBg(Color.rgb(15, 19, 30), Color.rgb(31, 38, 57), dp(20), 1));
             urlBar.setSelectAllOnFocus(true);
             urlBar.setOnEditorActionListener((v, actionId, event) -> {
                 boolean enter = event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_UP;
@@ -865,42 +934,21 @@ public class MainActivity extends Activity {
                 }
                 return false;
             });
-            toolbar.addView(urlBar, new LinearLayout.LayoutParams(0, dp(42), 1));
+            toolbar.addView(urlBar, new LinearLayout.LayoutParams(0, dp(36), 1));
 
             Button go = miniButton("Go");
+            go.setTextSize(11);
             go.setOnClickListener(v -> loadUrl(urlBar.getText().toString()));
-            toolbar.addView(go, new LinearLayout.LayoutParams(dp(50), dp(42)));
-            container.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(54)));
+            attachTip(go, "Ir");
+            toolbar.addView(go, new LinearLayout.LayoutParams(dp(38), dp(36)));
+            container.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(42)));
 
             configureWebView(webView);
             mobileUa = webView.getSettings().getUserAgentString();
             container.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
 
-            LinearLayout controls = new LinearLayout(ctx);
-            controls.setOrientation(LinearLayout.HORIZONTAL);
-            controls.setGravity(Gravity.CENTER_VERTICAL);
-            controls.setPadding(dp(4), dp(6), dp(4), 0);
-            focusButton = actionButton("Foco", accent);
-            setButtonIcon(focusButton, R.drawable.ic_hs_focus, ICON_ACTIVE, 15);
-            focusButton.setOnClickListener(v -> { if (focusMode) exitFocus(); else enterFocus(this); });
-            controls.addView(focusButton, new LinearLayout.LayoutParams(0, dp(40), 1));
-
-            muteButton = actionButton("Som", accent);
-            setButtonIcon(muteButton, R.drawable.ic_hs_volume, ICON_NORMAL, 15);
-            muteButton.setOnClickListener(v -> toggleMute());
-            muteButton.setOnLongClickListener(v -> { cycleVolume(); return true; });
-            controls.addView(muteButton, new LinearLayout.LayoutParams(0, dp(40), 1));
-
-            Button desktop = actionButton("Desk", accent);
-            setButtonIcon(desktop, R.drawable.ic_hs_desktop, ICON_NORMAL, 15);
-            desktop.setOnClickListener(v -> toggleDesktopMode());
-            controls.addView(desktop, new LinearLayout.LayoutParams(0, dp(40), 1));
-
-            Button external = actionButton("Ext", accent);
-            setButtonIcon(external, R.drawable.ic_hs_external, ICON_NORMAL, 15);
-            external.setOnClickListener(v -> openExternal(currentUrl()));
-            controls.addView(external, new LinearLayout.LayoutParams(0, dp(40), 1));
-            container.addView(controls, new LinearLayout.LayoutParams(-1, dp(48)));
+            focusButton = new Button(MainActivity.this);
+            muteButton = new Button(MainActivity.this);
         }
 
         private Button miniButton(String text) {
@@ -910,7 +958,11 @@ public class MainActivity extends Activity {
             b.setAllCaps(false);
             b.setTextSize(12);
             b.setPadding(0, 0, 0, 0);
-            b.setBackground(cardBg(Color.rgb(17, 22, 35), Color.rgb(36, 43, 64), dp(12), 1));
+            b.setMinWidth(0);
+            b.setMinimumWidth(0);
+            b.setMinHeight(0);
+            b.setMinimumHeight(0);
+            b.setBackground(cardBg(Color.TRANSPARENT, Color.TRANSPARENT, dp(10), 0));
             return b;
         }
 

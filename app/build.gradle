@@ -10,8 +10,8 @@ android {
         applicationId 'br.com.hubsyncbr'
         minSdk 23
         targetSdk 35
-        versionCode 4
-        versionName '0.4.0-window-manager'
+        versionCode 5
+        versionName '0.4.1-clean-core'
     }
 
     buildTypes {
