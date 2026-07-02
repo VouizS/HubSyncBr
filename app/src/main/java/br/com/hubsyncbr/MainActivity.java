@@ -160,9 +160,10 @@ public class MainActivity extends Activity {
         side.setBackground(cardBg(Color.rgb(9, 13, 24), Color.rgb(26, 31, 48), dp(24), 1));
 
         TextView logo = label("HubSyncBr", 20, TEXT, true);
-        setLeftIcon(logo, R.drawable.ic_hs_sync, ICON_ACTIVE, 30);
-        logo.setPadding(dp(8), dp(10), dp(8), dp(4));
-        side.addView(logo, new LinearLayout.LayoutParams(-1, dp(58)));
+        setLeftIcon(logo, R.drawable.ic_hs_sync, ICON_ACTIVE, 24);
+                logo.setGravity(Gravity.CENTER_VERTICAL);
+logo.setPadding(dp(8), 0, dp(8), 0);
+        side.addView(logo, new LinearLayout.LayoutParams(-1, dp(52)));
 
         TextView sub = label("Watch more. Sync more.", 11, MUTED, false);
         sub.setPadding(dp(8), 0, dp(8), dp(10));
@@ -275,20 +276,13 @@ public class MainActivity extends Activity {
         box.setGravity(Gravity.CENTER);
         box.setPadding(dp(18), dp(18), dp(18), dp(18));
         box.setBackground(cardBg(Color.rgb(10, 13, 23), Color.rgb(45, 56, 86), dp(18), 1));
-
-        TextView plus = label("", 48, BLUE, true);
-        setCenterIcon(plus, R.drawable.ic_hs_plus, ICON_BLUE, 52);
-        plus.setGravity(Gravity.CENTER);
-        TextView title = label("Adicionar janela", 22, TEXT, true);
+TextView title = label("Adicionar janela", 22, TEXT, true);
         title.setGravity(Gravity.CENTER);
         TextView desc = label("Abra um site, use como navegador ou combine com outra transmissão.", 13, MUTED, false);
         desc.setGravity(Gravity.CENTER);
         Button add = chip("Nova janela", PURPLE);
-        setButtonIcon(add, R.drawable.ic_hs_plus, ICON_ACTIVE, 18);
-        add.setOnClickListener(v -> addWindow());
-
-        box.addView(plus, new LinearLayout.LayoutParams(-1, dp(62)));
-        box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
+add.setOnClickListener(v -> addWindow());
+box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         box.addView(desc, new LinearLayout.LayoutParams(-1, dp(36)));
         LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(178), dp(44));
         alp.setMargins(0, dp(18), 0, 0);
@@ -1094,24 +1088,28 @@ public class MainActivity extends Activity {
         return "https://www.google.com/search?q=" + q;
     }
 
+    
     private String hubHomeDataUrl() {
-        
-        String brandLogo = "file:///android_asset/hubsyncbr_mark.png";
-String engine = hubPrefs().getString("search_engine", "google");
+        String engine = hubPrefs().getString("search_engine", "google");
         String engineName = "Google";
         if ("duckduckgo".equals(engine)) engineName = "DuckDuckGo";
         else if ("bing".equals(engine)) engineName = "Bing";
         else if ("brave".equals(engine)) engineName = "Brave";
+        String searchBase = searchUrl("__Q__").replace("__Q__", "'+encodeURIComponent(q)+'");
         String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                "<style>body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:24px;}" +
-                ".wrap{max-width:900px;margin:auto}.logo{font-size:34px;font-weight:800;margin-top:20px;display:flex;align-items:center;gap:12px}.tag{color:#9aa3b8;margin:8px 0 24px}" +
-                ".search{display:flex;gap:8px;background:#101420;border:1px solid #4f46e5;border-radius:22px;padding:8px;box-shadow:0 0 18px #1d4ed833}" +
-                "input{flex:1;background:transparent;border:0;color:#fff;font-size:16px;outline:0;padding:12px}button{background:#8b5cf6;color:white;border:0;border-radius:16px;padding:0 18px;font-weight:700}" +
-                ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:24px}.card{display:block;text-decoration:none;color:#ecf0ff;background:#101420;border:1px solid #25304a;border-radius:18px;padding:18px}" +
-                ".card b{display:block;margin-bottom:6px}.card span{color:#9aa3b8;font-size:12px}.engine{color:#38bdf8;font-size:12px;margin-top:10px}</style></head><body><div class='wrap'>" +
-                "<div class='logo'><img src='" + brandLogo + "' style='width:58px;height:58px;border-radius:18px;object-fit:contain'>HubSyncBr</div><div class='tag'>Seu browser workspace para janelas, grupos e transmissões.</div>" +
-                "<form class='search' onsubmit=\"var q=document.getElementById('q').value.trim(); if(!q)return false; if(q.indexOf('.')>-1 && q.indexOf(' ')==-1){location.href=q.indexOf('http')==0?q:'https://'+q}else{location.href='" + searchUrl("__Q__").replace("__Q__", "'+encodeURIComponent(q)+'") + "'} return false;\">" +
-                "<input id='q' placeholder='Pesquisar ou digitar URL'><button>Ir</button></form><div class='engine'>Busca atual: " + engineName + "</div>" +
+                "<style>" +
+                "*{box-sizing:border-box}body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:24px;}" +
+                ".wrap{max-width:900px;margin:auto}.logo{font-size:34px;font-weight:850;margin-top:20px;letter-spacing:-1px;line-height:1.05}" +
+                ".tag{color:#9aa3b8;margin:10px 0 24px;font-size:15px;line-height:1.35}" +
+                ".search{display:flex;background:#101420;border:1px solid #6d5dfc;border-radius:22px;padding:4px 8px;box-shadow:0 0 18px #1d4ed833;min-height:56px}" +
+                "input{width:100%;background:transparent;border:0;color:#fff;font-size:16px;outline:0;padding:12px 10px}" +
+                ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:24px}" +
+                ".card{display:block;text-decoration:none;color:#ecf0ff;background:#101420;border:1px solid #25304a;border-radius:18px;padding:18px;min-height:92px}" +
+                ".card b{display:block;margin-bottom:6px}.card span{color:#9aa3b8;font-size:12px}.engine{color:#38bdf8;font-size:12px;margin-top:10px}" +
+                "</style></head><body><div class='wrap'>" +
+                "<div class='logo'>HubSyncBr</div><div class='tag'>Seu browser workspace para janelas, grupos e transmissões.</div>" +
+                "<form class='search' onsubmit=\"var q=document.getElementById('q').value.trim(); if(!q)return false; if(q.indexOf('.')>-1 && q.indexOf(' ')==-1){location.href=q.indexOf('http')==0?q:'https://'+q}else{location.href='" + searchBase + "'} return false;\">" +
+                "<input id='q' placeholder='Pesquisar ou digitar URL'></form><div class='engine'>Busca atual: " + engineName + "</div>" +
                 "<div class='grid'>" +
                 "<a class='card' href='https://www.youtube.com'><b>YouTube</b><span>Vídeos e transmissões</span></a>" +
                 "<a class='card' href='https://www.twitch.tv'><b>Twitch</b><span>Lives e canais</span></a>" +
