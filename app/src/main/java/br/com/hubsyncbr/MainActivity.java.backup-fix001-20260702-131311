@@ -340,13 +340,13 @@ public class MainActivity extends Activity {
         final LinearLayout container;
         final TextView title;
         final EditText urlBar;
-        WebView webView;
+        final WebView webView;
         final Button focusButton;
         final Button muteButton;
         boolean desktopMode = false;
         boolean muted = false;
         final String defaultUrl;
-        String mobileUa;
+        final String mobileUa;
 
         StreamPane(Context ctx, String slot, String name, String url, int accent) {
             defaultUrl = url;
