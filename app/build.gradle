@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 10
-        versionName '0.6.2-r2-home-clean-brand-align'
+        versionName '0.7.0-media-hub-offline-mvp'
     }
 
     buildTypes {

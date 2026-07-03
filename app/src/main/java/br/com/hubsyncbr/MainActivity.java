@@ -1,5 +1,7 @@
 package br.com.hubsyncbr;
 
+
+import android.webkit.ValueCallback;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -41,6 +43,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
+
+    private static final int HS_FILE_CHOOSER_REQ = 7013;
+    private ValueCallback<Uri[]> hsFileChooserCallback;
+
     private static final int BG = Color.rgb(7, 10, 18);
     private static final int PANEL = Color.rgb(16, 20, 32);
     private static final int TEXT = Color.rgb(245, 247, 255);
@@ -1089,12 +1095,14 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
     }
 
     
+    
     private String hubHomeDataUrl() {
         String engine = hubPrefs().getString("search_engine", "google");
         String engineName = "Google";
         if ("duckduckgo".equals(engine)) engineName = "DuckDuckGo";
         else if ("bing".equals(engine)) engineName = "Bing";
         else if ("brave".equals(engine)) engineName = "Brave";
+        String mediaUrl = mediaHubDataUrl();
         String searchBase = searchUrl("__Q__").replace("__Q__", "'+encodeURIComponent(q)+'");
         String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
                 "<style>" +
@@ -1111,6 +1119,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
                 "<form class='search' onsubmit=\"var q=document.getElementById('q').value.trim(); if(!q)return false; if(q.indexOf('.')>-1 && q.indexOf(' ')==-1){location.href=q.indexOf('http')==0?q:'https://'+q}else{location.href='" + searchBase + "'} return false;\">" +
                 "<input id='q' placeholder='Pesquisar ou digitar URL'></form><div class='engine'>Busca atual: " + engineName + "</div>" +
                 "<div class='grid'>" +
+                "<a class='card' href='" + mediaUrl + "'><b>Media Hub</b><span>Vídeos e arquivos offline</span></a>" +
                 "<a class='card' href='https://www.youtube.com'><b>YouTube</b><span>Vídeos e transmissões</span></a>" +
                 "<a class='card' href='https://www.twitch.tv'><b>Twitch</b><span>Lives e canais</span></a>" +
                 "<a class='card' href='https://www.kick.com'><b>Kick</b><span>Streams</span></a>" +
@@ -1416,6 +1425,25 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
                 }
             });
             w.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(android.webkit.WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                try {
+                    if (hsFileChooserCallback != null) {
+                        hsFileChooserCallback.onReceiveValue(null);
+                    }
+                    hsFileChooserCallback = filePathCallback;
+                    Intent intent = fileChooserParams != null ? fileChooserParams.createIntent() : new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"video/*", "audio/*", "image/*"});
+                    startActivityForResult(Intent.createChooser(intent, "Selecionar mídia"), HS_FILE_CHOOSER_REQ);
+                    return true;
+                } catch (Exception e) {
+                    hsFileChooserCallback = null;
+                    return false;
+                }
+            }
+
                 @Override
                 public void onReceivedTitle(WebView view, String titleValue) {
                     pageTitle = titleValue == null ? "" : titleValue;
@@ -1572,4 +1600,61 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
             try { pane.webView.destroy(); } catch (Exception ignored) {}
         }
     }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        if (requestCode == HS_FILE_CHOOSER_REQ) {
+            if (hsFileChooserCallback != null) {
+                Uri[] result = null;
+                if (resultCode == RESULT_OK && data != null) {
+                    if (data.getClipData() != null && data.getClipData().getItemCount() > 0) {
+                        int count = data.getClipData().getItemCount();
+                        result = new Uri[count];
+                        for (int i = 0; i < count; i++) {
+                            result[i] = data.getClipData().getItemAt(i).getUri();
+                        }
+                    } else if (data.getData() != null) {
+                        result = new Uri[]{data.getData()};
+                    }
+                }
+                hsFileChooserCallback.onReceiveValue(result);
+                hsFileChooserCallback = null;
+            }
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+
+
+    private String mediaHubDataUrl() {
+        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                "<style>" +
+                "*{box-sizing:border-box}body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:22px;}" +
+                ".wrap{max-width:980px;margin:auto}.title{font-size:30px;font-weight:850;letter-spacing:-.5px;margin-top:12px}" +
+                ".tag{color:#9aa3b8;margin:8px 0 20px;font-size:14px;line-height:1.35}.panel{background:#101420;border:1px solid #25304a;border-radius:20px;padding:18px;margin-top:14px}" +
+                ".pick{display:inline-flex;align-items:center;justify-content:center;min-height:48px;border-radius:16px;border:1px solid #7c3aed;background:#121827;color:#fff;font-weight:800;padding:0 18px;cursor:pointer}" +
+                "input{display:none}.hint{color:#7f8ca8;font-size:12px;margin-top:10px;line-height:1.4}.name{font-weight:800;margin:16px 0 10px;color:#dce7ff}" +
+                "video,audio,img{width:100%;max-height:62vh;border-radius:18px;background:#000;border:1px solid #25304a;object-fit:contain}" +
+                ".empty{border:1px dashed #33405d;border-radius:18px;padding:24px;text-align:center;color:#9aa3b8}.badge{display:inline-block;margin-top:10px;color:#38bdf8;font-size:12px}" +
+                "</style></head><body><div class='wrap'>" +
+                "<div class='title'>Media Hub</div><div class='tag'>Abra vídeos, músicas, GIFs e imagens do aparelho para usar offline dentro do HubSyncBr.</div>" +
+                "<div class='panel'><label class='pick'>Selecionar mídia<input id='file' type='file' accept='video/*,audio/*,image/*'></label>" +
+                "<div class='hint'>Arquivos grandes não são copiados para o app. O HubSyncBr usa o seletor seguro do Android e reproduz localmente quando o formato é suportado pelo aparelho.</div>" +
+                "<div id='meta' class='badge'></div></div><div id='out' class='panel empty'>Nenhuma mídia selecionada.</div>" +
+                "<script>" +
+                "var f=document.getElementById('file'),out=document.getElementById('out'),meta=document.getElementById('meta'),url=null;" +
+                "function size(n){if(!n)return ''; var u=['B','KB','MB','GB'];var i=0;while(n>1024&&i<u.length-1){n/=1024;i++}return n.toFixed(i?1:0)+' '+u[i]}" +
+                "f.onchange=function(){var file=f.files&&f.files[0]; if(!file)return; if(url)URL.revokeObjectURL(url); url=URL.createObjectURL(file); var t=file.type||''; meta.textContent=file.name+' • '+size(file.size)+' • '+(t||'tipo desconhecido');" +
+                "if(t.indexOf('video/')===0){out.className='panel';out.innerHTML='<div class=name>'+file.name+'</div><video controls autoplay playsinline src='+url+'></video>'}" +
+                "else if(t.indexOf('audio/')===0){out.className='panel';out.innerHTML='<div class=name>'+file.name+'</div><audio controls autoplay src='+url+'></audio>'}" +
+                "else if(t.indexOf('image/')===0){out.className='panel';out.innerHTML='<div class=name>'+file.name+'</div><img src='+url+'>'}" +
+                "else{out.className='panel empty';out.textContent='Formato não reconhecido pelo Media Hub.'}" +
+                "};" +
+                "</script></div></body></html>";
+        return "data:text/html;charset=utf-8," + Uri.encode(html);
+    }
+
 }
