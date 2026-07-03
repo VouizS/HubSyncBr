@@ -1,6 +1,8 @@
 package br.com.hubsyncbr;
 
 
+
+import android.graphics.Rect;
 import android.webkit.ValueCallback;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -43,6 +45,151 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
+
+    private void hsRefreshCoreTargetAfterLayout() {
+        try {
+            getWindow().getDecorView().postDelayed(() -> {
+                try {
+                    hsCoreIsolatedTarget = null;
+                    android.view.View workspace = hsFindWorkspaceTarget();
+                    if (workspace != null) {
+                        hsApplyCoreTransform(workspace);
+                    }
+                    hsApplyAddSlotVisibility();
+                } catch (Exception ignored) {
+                }
+            }, 350);
+        } catch (Exception ignored) {
+        }
+    }
+
+
+
+    // ===== HS_UPDATE_026_CORE_ISOLATION =====
+    // Mantém sidebar/topbar fixas e transforma apenas a mesa interna.
+    private android.view.View hsCoreIsolatedTarget = null;
+    private long hsLastCoreTargetSearchMs = 0L;
+
+    private void hsResetCoreTransformSafe() {
+        try {
+            hsCoreScaleFree = 1.0f;
+            hsCoreOffsetXFree = 0.0f;
+            hsCoreOffsetYFree = 0.0f;
+            android.view.View workspace = hsFindWorkspaceTarget();
+            if (workspace != null) {
+                hsApplyCoreTransform(workspace);
+            }
+            android.widget.Toast.makeText(this, "Núcleo recentralizado", android.widget.Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
+    }
+
+    private boolean hsLooksLikeFixedShell(android.view.ViewGroup group) {
+        try {
+            if (group == null) return false;
+
+            boolean topTitle = hsContainsText(group, "Hub View") || hsContainsText(group, "Groups") || hsContainsText(group, "Grid View");
+            boolean topHint = hsContainsText(group, "núcleo expandido") || hsContainsText(group, "Escolha um grupo");
+            boolean sidebar = hsContainsText(group, "Multi Screen") && hsContainsText(group, "Settings");
+            boolean appShell = sidebar || (topTitle && topHint);
+
+            return appShell;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private int hsCoreCandidateScore(android.view.ViewGroup group) {
+        if (group == null) return -999999;
+        try {
+            int w = group.getWidth();
+            int h = group.getHeight();
+            if (w < 120 || h < 120) return -999999;
+            if (hsLooksLikeFixedShell(group)) return -999999;
+
+            int score = 0;
+
+            if (hsContainsText(group, "Janela 1")) score += 80;
+            if (hsContainsText(group, "Janela 2")) score += 80;
+            if (hsContainsText(group, "Janela 3")) score += 80;
+            if (hsContainsText(group, "Janela 4")) score += 80;
+            if (hsContainsText(group, "Janela 5")) score += 80;
+            if (hsContainsText(group, "Janela 6")) score += 80;
+            if (hsContainsText(group, "Nova janela")) score += 50;
+            if (hsContainsText(group, "Adicionar janela")) score += 45;
+
+            if (hsContainsText(group, "Home") && hsContainsText(group, "Favorites") && hsContainsText(group, "Browser")) score -= 180;
+            if (hsContainsText(group, "Hub View") || hsContainsText(group, "Groups") || hsContainsText(group, "Grid View")) score -= 140;
+            if (hsContainsText(group, "Escolha um grupo para abrir o workspace")) score -= 140;
+            if (hsContainsText(group, "Janelas abertas")) score -= 200;
+            if (hsContainsText(group, "Navegador HubSyncBr")) score -= 200;
+
+            long area = (long) w * (long) h;
+            score += (int) Math.min(80, area / 60000L);
+
+            Rect r = new Rect();
+            group.getGlobalVisibleRect(r);
+            if (r.top < 80 && (hsContainsText(group, "Hub View") || hsContainsText(group, "Groups"))) score -= 120;
+
+            return score;
+        } catch (Exception e) {
+            return -999999;
+        }
+    }
+
+    private android.view.View hsFindWorkspaceTargetIsolated(android.view.View root) {
+        try {
+            android.view.View best = hsFindWorkspaceTargetIsolatedRecursive(root, null, -999999);
+            if (best != null) {
+                hsCoreIsolatedTarget = best;
+                hsCoreWorkspaceTarget = best;
+                return best;
+            }
+        } catch (Exception ignored) {
+        }
+        return hsCoreIsolatedTarget != null ? hsCoreIsolatedTarget : hsCoreWorkspaceTarget;
+    }
+
+    private android.view.View hsFindWorkspaceTargetIsolatedRecursive(android.view.View view, android.view.View best, int bestScore) {
+        if (!(view instanceof android.view.ViewGroup)) return best;
+
+        android.view.ViewGroup group = (android.view.ViewGroup) view;
+        int score = hsCoreCandidateScore(group);
+
+        if (score > bestScore) {
+            best = group;
+            bestScore = score;
+        }
+
+        for (int i = 0; i < group.getChildCount(); i++) {
+            android.view.View childBest = hsFindWorkspaceTargetIsolatedRecursive(group.getChildAt(i), best, bestScore);
+            if (childBest instanceof android.view.ViewGroup) {
+                int childScore = hsCoreCandidateScore((android.view.ViewGroup) childBest);
+                if (childScore > bestScore) {
+                    best = childBest;
+                    bestScore = childScore;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    private void hsKeepCoreInsideSafeBounds(android.view.View workspace) {
+        try {
+            if (workspace == null) return;
+
+            float maxX = Math.max(320.0f, workspace.getWidth() * 0.65f);
+            float maxY = Math.max(420.0f, workspace.getHeight() * 0.65f);
+
+            hsCoreOffsetXFree = hsClamp(hsCoreOffsetXFree, -maxX, maxX);
+            hsCoreOffsetYFree = hsClamp(hsCoreOffsetYFree, -maxY, maxY);
+        } catch (Exception ignored) {
+        }
+    }
+    // ===== fim HS_UPDATE_026_CORE_ISOLATION =====
+
+
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
@@ -95,8 +242,8 @@ public class MainActivity extends Activity {
     private boolean hsHandleFreeCoreGesture(android.view.MotionEvent ev) {
         try {
             if (ev == null) return false;
-            int count = ev.getPointerCount();
 
+            int count = ev.getPointerCount();
             if (count < 2) {
                 if (hsCoreGestureActive) {
                     hsCoreGestureActive = false;
@@ -114,15 +261,21 @@ public class MainActivity extends Activity {
             float dx = x1 - x0;
             float dy = y1 - y0;
             float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
             if (distance < 16.0f) return true;
 
             android.view.View workspace = hsFindWorkspaceTarget();
             if (workspace == null) return false;
 
+            if (workspace instanceof android.view.ViewGroup && hsLooksLikeFixedShell((android.view.ViewGroup) workspace)) {
+                return false;
+            }
+
             int action = ev.getActionMasked();
             if (!hsCoreGestureActive || action == android.view.MotionEvent.ACTION_POINTER_DOWN) {
                 hsCoreGestureActive = true;
                 hsCoreWorkspaceTarget = workspace;
+                hsCoreIsolatedTarget = workspace;
                 hsCoreLastFocusX = focusX;
                 hsCoreLastFocusY = focusY;
                 hsCoreLastDistance = distance;
@@ -134,8 +287,8 @@ public class MainActivity extends Activity {
             float scaleDelta = distance / Math.max(1.0f, hsCoreLastDistance);
 
             hsCoreScaleFree = hsClamp(hsCoreScaleFree * scaleDelta, 0.55f, 1.60f);
-            hsCoreOffsetXFree = hsClamp(hsCoreOffsetXFree + panX, -900.0f, 900.0f);
-            hsCoreOffsetYFree = hsClamp(hsCoreOffsetYFree + panY, -1200.0f, 1200.0f);
+            hsCoreOffsetXFree = hsCoreOffsetXFree + panX;
+            hsCoreOffsetYFree = hsCoreOffsetYFree + panY;
 
             hsCoreLastFocusX = focusX;
             hsCoreLastFocusY = focusY;
@@ -148,6 +301,7 @@ public class MainActivity extends Activity {
         }
     }
 
+
     private float hsClamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
     }
@@ -155,22 +309,26 @@ public class MainActivity extends Activity {
     private void hsApplyCoreTransform(android.view.View workspace) {
         try {
             if (workspace == null) return;
+            hsKeepCoreInsideSafeBounds(workspace);
             workspace.setPivotX(workspace.getWidth() / 2.0f);
             workspace.setPivotY(workspace.getHeight() / 2.0f);
             workspace.setScaleX(hsCoreScaleFree);
             workspace.setScaleY(hsCoreScaleFree);
             workspace.setTranslationX(hsCoreOffsetXFree);
             workspace.setTranslationY(hsCoreOffsetYFree);
+            workspace.bringToFront();
         } catch (Exception ignored) {
         }
     }
 
+
     private android.view.View hsFindWorkspaceTarget() {
         try {
             android.view.View root = getWindow().getDecorView();
-            android.view.View found = hsFindWorkspaceTargetRecursive(root, null);
+            android.view.View found = hsFindWorkspaceTargetIsolated(root);
             if (found != null) {
                 hsCoreWorkspaceTarget = found;
+                hsCoreIsolatedTarget = found;
                 return found;
             }
             return hsCoreWorkspaceTarget;
@@ -178,6 +336,7 @@ public class MainActivity extends Activity {
             return hsCoreWorkspaceTarget;
         }
     }
+
 
     private android.view.View hsFindWorkspaceTargetRecursive(android.view.View view, android.view.View best) {
         if (view == null) return best;
@@ -246,7 +405,7 @@ public class MainActivity extends Activity {
         try {
             android.widget.Toast.makeText(this,
                     hsCoreSlotsVisible ? "+ do núcleo ativado" : "+ do núcleo oculto",
-                    android.widget.Toast.LENGTH_SHORT).show();
+                    android.widget.Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
         } catch (Exception ignored) {
         }
     }
@@ -287,19 +446,19 @@ public class MainActivity extends Activity {
 
 
     private void rebuildAllWindows() {
-        // Stub seguro criado pela 0.7.5.1 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.2 para compatibilidade entre versoes.
     }
 
     private void renderWindows() {
-        // Stub seguro criado pela 0.7.5.1 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.2 para compatibilidade entre versoes.
     }
 
     private void refreshWindows() {
-        // Stub seguro criado pela 0.7.5.1 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.2 para compatibilidade entre versoes.
     }
 
 
-    // ===== HubSyncBr 0.7.5.1 - Expanded Core Workspace =====
+    // ===== HubSyncBr 0.7.5.2 - Expanded Core Workspace =====
     private static final int CORE_MODE_COMPACT = 0;
     private static final int CORE_MODE_WIDE = 1;
     private static final int CORE_MODE_DESKTOP = 2;
@@ -351,7 +510,7 @@ public class MainActivity extends Activity {
 
     private void safeToast(String message) {
         try {
-            android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
         } catch (Exception ignored) {}
     }
     // ===== fim Expanded Core Workspace =====
@@ -753,7 +912,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         visiblePanes.clear();
         groupOverviewMode = false;
         updateWindowLayout();
-        Toast.makeText(this, "Grupo criado", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Grupo criado", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
     }
 
     private void enterGroup(WindowGroup group) {
@@ -813,7 +972,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
 
         if (visiblePanes.size() < MAX_VISIBLE_WINDOWS) {
             showPane(pane);
-            Toast.makeText(this, mediaWorkspaceMode ? "Janela Media Hub adicionada" : "Janela adicionada", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, mediaWorkspaceMode ? "Janela Media Hub adicionada" : "Janela adicionada", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
         } else {
             Toast.makeText(this, "Janela criada e minimizada. Abra o gerenciador para trocar.", Toast.LENGTH_LONG).show();
             showWindowManager();
@@ -825,7 +984,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         if (activeGroup != null && !activeGroup.panes.contains(pane)) activeGroup.panes.add(pane);
         if (!visiblePanes.contains(pane)) {
             if (visiblePanes.size() >= MAX_VISIBLE_WINDOWS) {
-                Toast.makeText(this, "Máximo visível agora: 4 janelas", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Máximo visível agora: 4 janelas", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
                 return;
             }
             visiblePanes.add(pane);
@@ -881,7 +1040,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         sidebarCollapsed = !sidebarCollapsed;
         sidebar.setVisibility(sidebarCollapsed ? View.GONE : View.VISIBLE);
         mainArea.setPadding(sidebarCollapsed ? 0 : dp(12), 0, 0, 0);
-        Toast.makeText(this, sidebarCollapsed ? "Menu recolhido" : "Menu aberto", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, sidebarCollapsed ? "Menu recolhido" : "Menu aberto", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
     }
 
     private void cycleLayoutMode() {
@@ -892,7 +1051,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         else if (layoutMode == 1) msg = "Primeira janela maior";
         else if (layoutMode == 2) msg = "Segunda janela maior";
         else msg = "Grade 2x2";
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
     }
 
     private void updateWindowLayout() {
@@ -1099,7 +1258,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
 
     private void swapFirstTwoVisible() {
         if (visiblePanes.size() < 2) {
-            Toast.makeText(this, "Abra duas janelas visíveis para trocar", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Abra duas janelas visíveis para trocar", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
             return;
         }
         StreamPane first = visiblePanes.get(0);
@@ -1351,7 +1510,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
 
     private void attachTip(View view, String message) {
         view.setOnLongClickListener(v -> {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
             return true;
         });
     }
@@ -1473,7 +1632,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(normalizeUrl(url))));
         } catch (Exception e) {
-            Toast.makeText(this, "Não foi possível abrir externo", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Não foi possível abrir externo", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
         }
     }
 
@@ -1833,7 +1992,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
                 muteButton.setText(muted ? "Mudo" : "Som");
                 setButtonIcon(muteButton, muted ? R.drawable.ic_hs_mute : R.drawable.ic_hs_volume, muted ? ICON_ACTIVE : ICON_NORMAL, 15);
             } catch (Exception e) {
-                Toast.makeText(MainActivity.this, "Mute depende do player do site", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Mute depende do player do site", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
             }
         }
 
@@ -1844,9 +2003,9 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
                 muted = false;
                 muteButton.setText("45%");
                 setButtonIcon(muteButton, R.drawable.ic_hs_volume, ICON_ACTIVE, 15);
-                Toast.makeText(MainActivity.this, "Volume HTML5 em 45% quando o site permitir", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Volume HTML5 em 45% quando o site permitir", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
             } catch (Exception e) {
-                Toast.makeText(MainActivity.this, "Volume depende do player do site", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Volume depende do player do site", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
             }
         }
 
@@ -1855,10 +2014,10 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
             WebSettings settings = webView.getSettings();
             if (desktopMode) {
                 settings.setUserAgentString("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36 HubSyncBr/0.5.1");
-                Toast.makeText(MainActivity.this, "Modo desktop", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Modo desktop", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
             } else {
                 settings.setUserAgentString(mobileUa);
-                Toast.makeText(MainActivity.this, "Modo mobile", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Modo mobile", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
             }
             webView.reload();
         }
@@ -1946,7 +2105,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         visiblePanes.clear();
         visiblePanes.addAll(activeGroup.visible);
         updateWindowLayout();
-        Toast.makeText(this, "Workspace web", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Workspace web", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
     }
 
     private void openMediaWorkspace() {
@@ -1960,7 +2119,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         visiblePanes.clear();
         visiblePanes.addAll(mediaGroup.visible);
         updateWindowLayout();
-        Toast.makeText(this, "Media Hub", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Media Hub", Toast.LENGTH_SHORT).show(); try { hsRefreshCoreTargetAfterLayout(); } catch (Exception ignored) {}
     }
 
 

@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 10
-        versionName '0.7.5.1-fix-google-home-duplicate'
+        versionName '0.7.5.2-core-isolation-fixed-ui'
     }
 
     buildTypes {
