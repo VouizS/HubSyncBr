@@ -46,6 +46,265 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    // ===== HS_UPDATE_033_FOCUS_SLOTS_CHROME_LAYER =====
+    private final java.util.WeakHashMap<android.view.View, Boolean> hs033HiddenFocusSlots = new java.util.WeakHashMap<>();
+    private boolean hs033FocusLayerWatcherInstalled = false;
+    private long hs033LastLayerPassMs = 0L;
+
+    private void hs033InstallFocusSlotsChromeLayerFix() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            if (root == null) return;
+
+            if (!hs033FocusLayerWatcherInstalled) {
+                hs033FocusLayerWatcherInstalled = true;
+                root.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                    try { hs033ScheduleFocusLayerPass(); } catch (Exception ignored) {}
+                });
+            }
+
+            hs033ScheduleFocusLayerPass();
+        } catch (Exception ignored) {}
+    }
+
+    private void hs033ScheduleFocusLayerPass() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            if (root == null) return;
+            root.postDelayed(() -> hs033ApplyFocusLayerPass(), 160);
+            root.postDelayed(() -> hs033ApplyFocusLayerPass(), 720);
+        } catch (Exception ignored) {}
+    }
+
+    private void hs033ApplyFocusLayerPass() {
+        try {
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - hs033LastLayerPassMs < 380L) return;
+            hs033LastLayerPassMs = now;
+
+            android.view.View root = getWindow().getDecorView();
+            if (root == null) return;
+
+            boolean focusMode = hs033IsFocusWorkspaceState(root);
+
+            if (focusMode) hs033HideInternalNovaSlots(root);
+            else hs033RestoreInternalNovaSlots();
+
+            hs033KeepWorkspaceBehindChrome(root);
+        } catch (Exception ignored) {}
+    }
+
+    private boolean hs033IsFocusWorkspaceState(android.view.View root) {
+        try {
+            int visibleWebViews = hs033CountVisibleWebViews(root);
+            if (visibleWebViews == 1) return true;
+
+            if (root instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) root;
+                if (hsContainsText(group, "Uma janela ativa") || hsContainsText(group, "modo foco")) return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private int hs033CountVisibleWebViews(android.view.View view) {
+        if (view == null) return 0;
+        try {
+            if (view.getVisibility() != android.view.View.VISIBLE) return 0;
+            if (view instanceof android.webkit.WebView) {
+                android.graphics.Rect r = new android.graphics.Rect();
+                return view.getGlobalVisibleRect(r) && r.width() > dp(40) && r.height() > dp(40) ? 1 : 0;
+            }
+            int total = 0;
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) total += hs033CountVisibleWebViews(group.getChildAt(i));
+            }
+            return total;
+        } catch (Exception ignored) { return 0; }
+    }
+
+    private void hs033HideInternalNovaSlots(android.view.View view) {
+        if (view == null) return;
+        try {
+            if (view instanceof android.widget.TextView) {
+                android.widget.TextView tv = (android.widget.TextView) view;
+                CharSequence cs = tv.getText();
+                String text = cs == null ? "" : cs.toString().trim();
+
+                if ("Nova janela".equalsIgnoreCase(text)) {
+                    if (hs033BelongsToMainEmptyState(view)) return;
+
+                    android.view.View slot = hs033FindBestInternalSlotFromText(view);
+                    if (slot != null) {
+                        hs033HiddenFocusSlots.put(slot, Boolean.TRUE);
+                        slot.setVisibility(android.view.View.GONE);
+                        slot.setAlpha(0f);
+                        return;
+                    }
+                }
+            }
+
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) hs033HideInternalNovaSlots(group.getChildAt(i));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void hs033RestoreInternalNovaSlots() {
+        try {
+            java.util.ArrayList<android.view.View> views = new java.util.ArrayList<>();
+            for (android.view.View view : hs033HiddenFocusSlots.keySet()) if (view != null) views.add(view);
+            for (android.view.View view : views) {
+                try {
+                    view.setAlpha(1f);
+                    view.setVisibility(android.view.View.VISIBLE);
+                } catch (Exception ignored) {}
+            }
+            hs033HiddenFocusSlots.clear();
+        } catch (Exception ignored) {}
+    }
+
+    private boolean hs033BelongsToMainEmptyState(android.view.View view) {
+        try {
+            android.view.ViewParent parent = view.getParent();
+            int depth = 0;
+            while (parent instanceof android.view.ViewGroup && depth < 12) {
+                android.view.ViewGroup group = (android.view.ViewGroup) parent;
+                if (hsContainsText(group, "Adicionar janela")) return true;
+                parent = group.getParent();
+                depth++;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private android.view.View hs033FindBestInternalSlotFromText(android.view.View textView) {
+        try {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int sw = dm.widthPixels;
+            int sh = dm.heightPixels;
+
+            android.view.ViewParent parent = textView.getParent();
+            android.view.View best = null;
+            int bestArea = -1;
+            int depth = 0;
+
+            while (parent instanceof android.view.ViewGroup && depth < 9) {
+                android.view.ViewGroup group = (android.view.ViewGroup) parent;
+
+                if (hsContainsText(group, "Adicionar janela")) return null;
+                if (hsContainsText(group, "Janelas abertas")) break;
+                if (hs033LooksLikeTopbar(group) || hs033LooksLikeSidebar(group)) break;
+                if (hs033ContainsWebView(group)) break;
+
+                android.graphics.Rect r = new android.graphics.Rect();
+                boolean ok = group.getGlobalVisibleRect(r);
+                if (!ok) {
+                    parent = group.getParent();
+                    depth++;
+                    continue;
+                }
+
+                boolean insideWorkspaceArea = r.top > dp(110);
+                boolean hasNovaJanela = hsContainsText(group, "Nova janela");
+                boolean reasonable = r.width() > dp(70) && r.height() > dp(70);
+                boolean notWholeScreen = r.width() < sw * 0.75f && r.height() < sh * 0.75f;
+
+                if (insideWorkspaceArea && hasNovaJanela && reasonable && notWholeScreen) {
+                    int area = Math.max(1, r.width()) * Math.max(1, r.height());
+                    if (area > bestArea) {
+                        best = group;
+                        bestArea = area;
+                    }
+                }
+
+                parent = group.getParent();
+                depth++;
+            }
+
+            return best;
+        } catch (Exception ignored) { return null; }
+    }
+
+    private boolean hs033ContainsWebView(android.view.View view) {
+        if (view == null) return false;
+        try {
+            if (view instanceof android.webkit.WebView) return true;
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    if (hs033ContainsWebView(group.getChildAt(i))) return true;
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private void hs033KeepWorkspaceBehindChrome(android.view.View root) {
+        try {
+            android.view.View workspace = hsFindWorkspaceTarget();
+            if (workspace != null) {
+                try {
+                    workspace.setElevation(0f);
+                    if (android.os.Build.VERSION.SDK_INT >= 21) workspace.setTranslationZ(0f);
+                } catch (Exception ignored) {}
+            }
+            hs033BringChromeRecursive(root);
+        } catch (Exception ignored) {}
+    }
+
+    private void hs033BringChromeRecursive(android.view.View view) {
+        if (view == null) return;
+        try {
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+
+                if (hs033LooksLikeTopbar(group) || hs033LooksLikeSidebar(group)) {
+                    try {
+                        group.bringToFront();
+                        group.setElevation(dp(24));
+                        if (android.os.Build.VERSION.SDK_INT >= 21) group.setTranslationZ(dp(24));
+                    } catch (Exception ignored) {}
+                }
+
+                for (int i = 0; i < group.getChildCount(); i++) hs033BringChromeRecursive(group.getChildAt(i));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private boolean hs033LooksLikeTopbar(android.view.ViewGroup group) {
+        try {
+            android.graphics.Rect r = new android.graphics.Rect();
+            if (!group.getGlobalVisibleRect(r)) return false;
+            if (r.top > dp(120)) return false;
+            if (r.height() > dp(150)) return false;
+
+            return hsContainsText(group, "Hub View")
+                    || hsContainsText(group, "Grid View")
+                    || hsContainsText(group, "Groups")
+                    || hsContainsText(group, "Núcleo expandido")
+                    || hsContainsText(group, "nucleo expandido");
+        } catch (Exception ignored) { return false; }
+    }
+
+    private boolean hs033LooksLikeSidebar(android.view.ViewGroup group) {
+        try {
+            android.graphics.Rect r = new android.graphics.Rect();
+            if (!group.getGlobalVisibleRect(r)) return false;
+            if (r.left > dp(40)) return false;
+            if (r.width() > dp(390)) return false;
+
+            return hsContainsText(group, "HubSyncBr")
+                    && hsContainsText(group, "Home")
+                    && hsContainsText(group, "Multi Screen");
+        } catch (Exception ignored) { return false; }
+    }
+    // ===== fim HS_UPDATE_033_FOCUS_SLOTS_CHROME_LAYER =====
+
+
+
     // ===== HS_UPDATE_032_MULTIWINDOW_PLAYBACK_PERFORMANCE =====
     private final java.util.WeakHashMap<android.webkit.WebView, Boolean> hsTunedWebViews = new java.util.WeakHashMap<>();
     private long hsLastWebViewPerformanceTuneMs = 0L;
@@ -862,19 +1121,19 @@ public class MainActivity extends Activity {
 
 
     private void rebuildAllWindows() {
-        // Stub seguro criado pela 0.7.5.8 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.9 para compatibilidade entre versoes.
     }
 
     private void renderWindows() {
-        // Stub seguro criado pela 0.7.5.8 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.9 para compatibilidade entre versoes.
     }
 
     private void refreshWindows() {
-        // Stub seguro criado pela 0.7.5.8 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.9 para compatibilidade entre versoes.
     }
 
 
-    // ===== HubSyncBr 0.7.5.8 - Expanded Core Workspace =====
+    // ===== HubSyncBr 0.7.5.9 - Expanded Core Workspace =====
     private static final int CORE_MODE_COMPACT = 0;
     private static final int CORE_MODE_WIDE = 1;
     private static final int CORE_MODE_DESKTOP = 2;
@@ -995,7 +1254,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hsInstallMultiWindowPerformanceMode(), 900); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsScheduleForceHideInternalPlusSlots(), 1700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsBindTopbarPlusToggleSafe(), 1200); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsResetCoreTransformWithoutToast(), 700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
+        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hs033InstallFocusSlotsChromeLayerFix(), 1000); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsInstallMultiWindowPerformanceMode(), 900); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsScheduleForceHideInternalPlusSlots(), 1700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsBindTopbarPlusToggleSafe(), 1200); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsResetCoreTransformWithoutToast(), 700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
         WebView.setWebContentsDebuggingEnabled(false);
         configureWindow();
         buildUi();

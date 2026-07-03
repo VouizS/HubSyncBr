@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 10
-        versionName '0.7.5.8-multiwindow-playback-performance'
+        versionName '0.7.5.9-focus-slots-chrome-layer'
     }
 
     buildTypes {
