@@ -1107,39 +1107,6 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
 
     
     
-    private String hubHomeDataUrl() {
-        String engine = hubPrefs().getString("search_engine", "google");
-        String engineName = "Google";
-        if ("duckduckgo".equals(engine)) engineName = "DuckDuckGo";
-        else if ("bing".equals(engine)) engineName = "Bing";
-        else if ("brave".equals(engine)) engineName = "Brave";
-        
-        String searchBase = searchUrl("__Q__").replace("__Q__", "'+encodeURIComponent(q)+'");
-        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                "<style>" +
-                "*{box-sizing:border-box}body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:24px;}" +
-                ".wrap{max-width:900px;margin:auto}.logo{font-size:34px;font-weight:850;margin-top:20px;letter-spacing:-1px;line-height:1.05}" +
-                ".tag{color:#9aa3b8;margin:10px 0 24px;font-size:15px;line-height:1.35}" +
-                ".search{display:flex;background:#101420;border:1px solid #6d5dfc;border-radius:22px;padding:4px 8px;box-shadow:0 0 18px #1d4ed833;min-height:56px}" +
-                "input{width:100%;background:transparent;border:0;color:#fff;font-size:16px;outline:0;padding:12px 10px}" +
-                ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:24px}" +
-                ".card{display:block;text-decoration:none;color:#ecf0ff;background:#101420;border:1px solid #25304a;border-radius:18px;padding:18px;min-height:92px}" +
-                ".card b{display:block;margin-bottom:6px}.card span{color:#9aa3b8;font-size:12px}.engine{color:#38bdf8;font-size:12px;margin-top:10px}" +
-                "</style></head><body><div class='wrap'>" +
-                "<div class='logo'>HubSyncBr</div><div class='tag'>Seu browser workspace para janelas, grupos e transmissões.</div>" +
-                "<form class='search' onsubmit=\"var q=document.getElementById('q').value.trim(); if(!q)return false; if(q.indexOf('.')>-1 && q.indexOf(' ')==-1){location.href=q.indexOf('http')==0?q:'https://'+q}else{location.href='" + searchBase + "'} return false;\">" +
-                "<input id='q' placeholder='Pesquisar ou digitar URL'></form><div class='engine'>Busca atual: " + engineName + "</div>" +
-                "<div class='grid'>" +
-                "<a class='card' href='hubsyncbr://media'><b>Media Hub</b><span>Vídeos e arquivos offline</span></a>" +
-                "<a class='card' href='https://www.youtube.com'><b>YouTube</b><span>Vídeos e transmissões</span></a>" +
-                "<a class='card' href='https://www.twitch.tv'><b>Twitch</b><span>Lives e canais</span></a>" +
-                "<a class='card' href='https://www.kick.com'><b>Kick</b><span>Streams</span></a>" +
-                "<a class='card' href='https://www.google.com'><b>Google</b><span>Pesquisa web</span></a>" +
-                "<a class='card' href='https://chat.openai.com'><b>ChatGPT</b><span>Assistente web</span></a>" +
-                "<a class='card' href='https://github.com'><b>GitHub</b><span>Código e projetos</span></a>" +
-                "</div></div></body></html>";
-        return "data:text/html;charset=utf-8," + Uri.encode(html);
-    }
 
     private void showBrowserSettings() {
         final String[] items = new String[]{
@@ -1677,39 +1644,78 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
     }
 
 
+
+
     private String mediaHubDataUrl() {
-        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                "<style>" +
-                "*{box-sizing:border-box}body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:22px;overflow:hidden}" +
-                ".wrap{height:100vh;max-width:980px;margin:auto;display:flex;flex-direction:column}" +
-                ".title{font-size:30px;font-weight:850;letter-spacing:-.5px;margin-top:12px}.tag{color:#9aa3b8;margin:8px 0 18px;font-size:14px;line-height:1.35}" +
-                ".panel{background:#101420;border:1px solid #25304a;border-radius:20px;padding:18px;margin-top:12px}" +
-                ".pick{display:inline-flex;align-items:center;justify-content:center;min-height:48px;border-radius:16px;border:1px solid #7c3aed;background:#121827;color:#fff;font-weight:800;padding:0 18px;cursor:pointer}" +
-                "input{display:none}.hint{color:#7f8ca8;font-size:12px;margin-top:10px;line-height:1.4}.name{font-weight:800;margin:0;color:#dce7ff}" +
-                ".empty{border:1px dashed #33405d;border-radius:18px;padding:24px;text-align:center;color:#9aa3b8;margin-top:14px}.badge{display:block;margin-top:10px;color:#38bdf8;font-size:12px;word-break:break-word}" +
-                "#out{flex:1;min-height:120px;overflow:hidden}.stage{position:fixed;inset:0;background:#000;z-index:20;display:flex;align-items:center;justify-content:center}" +
-                ".stage video,.stage img{width:100vw;height:100vh;max-width:100vw;max-height:100vh;object-fit:contain;background:#000;border:0;border-radius:0}" +
-                ".stage audio{width:88vw}.stage .audioBox{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:linear-gradient(135deg,#070a12,#111827)}" +
-                ".closeStage{position:fixed;top:10px;right:10px;z-index:25;border:0;border-radius:999px;background:rgba(15,19,30,.72);color:#fff;font-weight:800;padding:10px 14px}" +
-                "body.playing .wrap{display:none}" +
-                "</style></head><body><div class='wrap'>" +
-                "<div class='title'>Media Hub</div><div class='tag'>Abra vídeos, músicas, GIFs e imagens do aparelho para usar offline dentro do HubSyncBr.</div>" +
-                "<div class='panel'><label class='pick'>Selecionar mídia<input id='file' type='file' accept='video/*,audio/*,image/*'></label>" +
-                "<div class='hint'>Arquivos grandes não são copiados para o app. O HubSyncBr usa o seletor seguro do Android e reproduz localmente quando o formato é suportado pelo aparelho.</div>" +
-                "<div id='meta' class='badge'></div></div><div id='out' class='empty'>Nenhuma mídia selecionada.</div></div>" +
-                "<script>" +
-                "var f=document.getElementById('file'),out=document.getElementById('out'),meta=document.getElementById('meta'),url=null;" +
-                "function size(n){if(!n)return '';var u=['B','KB','MB','GB'];var i=0;while(n>1024&&i<u.length-1){n/=1024;i++}return n.toFixed(i?1:0)+' '+u[i]}" +
-                "function closeStage(){var st=document.getElementById('stage');if(st)st.remove();document.body.className='';}" +
-                "function renderStage(inner){document.body.className='playing';var old=document.getElementById('stage');if(old)old.remove();var st=document.createElement('div');st.id='stage';st.className='stage';st.innerHTML='<button class=closeStage onclick=closeStage()>×</button>'+inner;document.body.appendChild(st);}" +
-                "f.onchange=function(){var file=f.files&&f.files[0];if(!file)return;if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(file);var t=file.type||'';meta.textContent=file.name+' • '+size(file.size)+' • '+(t||'tipo desconhecido');" +
-                "if(t.indexOf('video/')===0){renderStage('<video controls autoplay playsinline src="'+url+'"></video>')}" +
-                "else if(t.indexOf('audio/')===0){renderStage('<div class=audioBox><div><div class=name>'+file.name+'</div><br><audio controls autoplay src="'+url+'"></audio></div></div>')}" +
-                "else if(t.indexOf('image/')===0){renderStage('<img src="'+url+'">')}" +
-                "else{out.className='empty';out.textContent='Formato não reconhecido pelo Media Hub.'}" +
-                "};" +
-                "</script></body></html>";
-        return "data:text/html;charset=utf-8," + Uri.encode(html);
+        String htmlB64 =
+                "PCFkb2N0eXBlIGh0bWw+CjxodG1sPgo8aGVhZD4KPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmlj" +
+                "ZS13aWR0aCxpbml0aWFsLXNjYWxlPTEsbWF4aW11bS1zY2FsZT0xIj4KPHN0eWxlPgoqe2JveC1zaXppbmc6Ym9yZGVyLWJv" +
+                "eH0KaHRtbCxib2R5e21hcmdpbjowO3dpZHRoOjEwMCU7aGVpZ2h0OjEwMCU7YmFja2dyb3VuZDojMDcwYTEyO2NvbG9yOiNl" +
+                "Y2YwZmY7Zm9udC1mYW1pbHk6c3lzdGVtLXVpLC1hcHBsZS1zeXN0ZW0sU2Vnb2UgVUksQXJpYWw7b3ZlcmZsb3c6aGlkZGVu" +
+                "fQpib2R5e3BhZGRpbmc6MjJweH0KLndyYXB7aGVpZ2h0OjEwMCU7ZGlzcGxheTpmbGV4O2ZsZXgtZGlyZWN0aW9uOmNvbHVt" +
+                "bjtnYXA6MTRweH0KLnRpdGxle2ZvbnQtc2l6ZTozMHB4O2ZvbnQtd2VpZ2h0Ojg1MDtsZXR0ZXItc3BhY2luZzotLjZweDtt" +
+                "YXJnaW46NHB4IDAgMH0KLnRhZ3tjb2xvcjojOWFhM2I4O2ZvbnQtc2l6ZToxNHB4O2xpbmUtaGVpZ2h0OjEuMzU7bWFyZ2lu" +
+                "OjAgMCA0cHh9Ci5wYW5lbHtiYWNrZ3JvdW5kOiMxMDE0MjA7Ym9yZGVyOjFweCBzb2xpZCAjMjUzMDRhO2JvcmRlci1yYWRp" +
+                "dXM6MjBweDtwYWRkaW5nOjE4cHh9Ci5waWNre2Rpc3BsYXk6aW5saW5lLWZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2p1c3Rp" +
+                "ZnktY29udGVudDpjZW50ZXI7bWluLWhlaWdodDo0OHB4O2JvcmRlci1yYWRpdXM6MTZweDtib3JkZXI6MXB4IHNvbGlkICM3" +
+                "YzNhZWQ7YmFja2dyb3VuZDojMTIxODI3O2NvbG9yOiNmZmY7Zm9udC13ZWlnaHQ6ODAwO3BhZGRpbmc6MCAxOHB4O2N1cnNv" +
+                "cjpwb2ludGVyfQppbnB1dHtkaXNwbGF5Om5vbmV9Ci5oaW50e2NvbG9yOiM3ZjhjYTg7Zm9udC1zaXplOjEycHg7bWFyZ2lu" +
+                "LXRvcDoxMHB4O2xpbmUtaGVpZ2h0OjEuNH0KLmJhZGdle2Rpc3BsYXk6YmxvY2s7bWFyZ2luLXRvcDoxMHB4O2NvbG9yOiMz" +
+                "OGJkZjg7Zm9udC1zaXplOjEycHg7d29yZC1icmVhazpicmVhay13b3JkfQouZW1wdHl7Ym9yZGVyOjFweCBkYXNoZWQgIzMz" +
+                "NDA1ZDtib3JkZXItcmFkaXVzOjE4cHg7cGFkZGluZzoyNHB4O3RleHQtYWxpZ246Y2VudGVyO2NvbG9yOiM5YWEzYjh9Ci5z" +
+                "dGFnZXtwb3NpdGlvbjpmaXhlZDtpbnNldDowO2JhY2tncm91bmQ6IzAwMDt6LWluZGV4OjIwO2Rpc3BsYXk6ZmxleDthbGln" +
+                "bi1pdGVtczpjZW50ZXI7anVzdGlmeS1jb250ZW50OmNlbnRlcn0KLnN0YWdlIHZpZGVvLC5zdGFnZSBpbWd7d2lkdGg6MTAw" +
+                "dnc7aGVpZ2h0OjEwMHZoO21heC13aWR0aDoxMDB2dzttYXgtaGVpZ2h0OjEwMHZoO29iamVjdC1maXQ6Y29udGFpbjtiYWNr" +
+                "Z3JvdW5kOiMwMDA7Ym9yZGVyOjA7Ym9yZGVyLXJhZGl1czowfQouc3RhZ2UgYXVkaW97d2lkdGg6ODh2d30KLmF1ZGlvQm94" +
+                "e3dpZHRoOjEwMHZ3O2hlaWdodDoxMDB2aDtkaXNwbGF5OmZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2p1c3RpZnktY29udGVu" +
+                "dDpjZW50ZXI7cGFkZGluZzoyOHB4O2JhY2tncm91bmQ6bGluZWFyLWdyYWRpZW50KDEzNWRlZywjMDcwYTEyLCMxMTE4Mjcp" +
+                "fQouYXVkaW9UaXRsZXtmb250LXNpemU6MThweDtmb250LXdlaWdodDo4MDA7bWFyZ2luLWJvdHRvbToxOHB4O3RleHQtYWxp" +
+                "Z246Y2VudGVyO3dvcmQtYnJlYWs6YnJlYWstd29yZH0KLmNsb3NlU3RhZ2V7cG9zaXRpb246Zml4ZWQ7dG9wOjEwcHg7cmln" +
+                "aHQ6MTBweDt6LWluZGV4OjI1O2JvcmRlcjowO2JvcmRlci1yYWRpdXM6OTk5cHg7YmFja2dyb3VuZDpyZ2JhKDE1LDE5LDMw" +
+                "LC43NCk7Y29sb3I6I2ZmZjtmb250LXdlaWdodDo5MDA7Zm9udC1zaXplOjE4cHg7cGFkZGluZzo4cHggMTRweH0KYm9keS5w" +
+                "bGF5aW5nIC53cmFwe2Rpc3BsYXk6bm9uZX0KPC9zdHlsZT4KPC9oZWFkPgo8Ym9keT4KPGRpdiBjbGFzcz0id3JhcCI+CiAg" +
+                "PGRpdiBjbGFzcz0idGl0bGUiPk1lZGlhIEh1YjwvZGl2PgogIDxkaXYgY2xhc3M9InRhZyI+QWJyYSB2w61kZW9zLCBtw7pz" +
+                "aWNhcywgR0lGcyBlIGltYWdlbnMgZG8gYXBhcmVsaG8gcGFyYSB1c2FyIG9mZmxpbmUgZGVudHJvIGRvIEh1YlN5bmNCci48" +
+                "L2Rpdj4KICA8ZGl2IGNsYXNzPSJwYW5lbCI+CiAgICA8bGFiZWwgY2xhc3M9InBpY2siPlNlbGVjaW9uYXIgbcOtZGlhPGlu" +
+                "cHV0IGlkPSJmaWxlIiB0eXBlPSJmaWxlIiBhY2NlcHQ9InZpZGVvLyosYXVkaW8vKixpbWFnZS8qIj48L2xhYmVsPgogICAg" +
+                "PGRpdiBjbGFzcz0iaGludCI+QXJxdWl2b3MgZ3JhbmRlcyBuw6NvIHPDo28gY29waWFkb3MgcGFyYSBvIGFwcC4gTyBIdWJT" +
+                "eW5jQnIgdXNhIG8gc2VsZXRvciBzZWd1cm8gZG8gQW5kcm9pZCBlIHJlcHJvZHV6IGxvY2FsbWVudGUgcXVhbmRvIG8gZm9y" +
+                "bWF0byDDqSBzdXBvcnRhZG8gcGVsbyBhcGFyZWxoby48L2Rpdj4KICAgIDxkaXYgaWQ9Im1ldGEiIGNsYXNzPSJiYWRnZSI+" +
+                "PC9kaXY+CiAgPC9kaXY+CiAgPGRpdiBpZD0ib3V0IiBjbGFzcz0iZW1wdHkiPk5lbmh1bWEgbcOtZGlhIHNlbGVjaW9uYWRh" +
+                "LjwvZGl2Pgo8L2Rpdj4KPHNjcmlwdD4KdmFyIGZpbGVJbnB1dD1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgiZmlsZSIpOwp2" +
+                "YXIgbWV0YT1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgibWV0YSIpOwp2YXIgY3VycmVudFVybD1udWxsOwoKZnVuY3Rpb24g" +
+                "c2l6ZVRleHQobil7CiAgaWYoIW4pe3JldHVybiAiIjt9CiAgdmFyIHVuaXRzPVsiQiIsIktCIiwiTUIiLCJHQiJdOwogIHZh" +
+                "ciBpPTA7CiAgd2hpbGUobj4xMDI0ICYmIGk8dW5pdHMubGVuZ3RoLTEpe249bi8xMDI0O2krKzt9CiAgcmV0dXJuIG4udG9G" +
+                "aXhlZChpPzE6MCkrIiAiK3VuaXRzW2ldOwp9CgpmdW5jdGlvbiBjbG9zZVN0YWdlKCl7CiAgdmFyIHN0YWdlPWRvY3VtZW50" +
+                "LmdldEVsZW1lbnRCeUlkKCJzdGFnZSIpOwogIGlmKHN0YWdlKXtzdGFnZS5yZW1vdmUoKTt9CiAgZG9jdW1lbnQuYm9keS5j" +
+                "bGFzc05hbWU9IiI7Cn0KCmZ1bmN0aW9uIG1ha2UodGFnKXsKICByZXR1cm4gZG9jdW1lbnQuY3JlYXRlRWxlbWVudCh0YWcp" +
+                "Owp9CgpmdW5jdGlvbiByZW5kZXJTdGFnZShraW5kLCBzcmMsIG5hbWUpewogIGRvY3VtZW50LmJvZHkuY2xhc3NOYW1lPSJw" +
+                "bGF5aW5nIjsKICB2YXIgb2xkPWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJzdGFnZSIpOwogIGlmKG9sZCl7b2xkLnJlbW92" +
+                "ZSgpO30KCiAgdmFyIHN0YWdlPW1ha2UoImRpdiIpOwogIHN0YWdlLmlkPSJzdGFnZSI7CiAgc3RhZ2UuY2xhc3NOYW1lPSJz" +
+                "dGFnZSI7CgogIHZhciBjbG9zZT1tYWtlKCJidXR0b24iKTsKICBjbG9zZS5jbGFzc05hbWU9ImNsb3NlU3RhZ2UiOwogIGNs" +
+                "b3NlLnRleHRDb250ZW50PSLDlyI7CiAgY2xvc2Uub25jbGljaz1jbG9zZVN0YWdlOwogIHN0YWdlLmFwcGVuZENoaWxkKGNs" +
+                "b3NlKTsKCiAgaWYoa2luZD09PSJ2aWRlbyIpewogICAgdmFyIHZpZGVvPW1ha2UoInZpZGVvIik7CiAgICB2aWRlby5jb250" +
+                "cm9scz10cnVlOwogICAgdmlkZW8uYXV0b3BsYXk9dHJ1ZTsKICAgIHZpZGVvLnBsYXlzSW5saW5lPXRydWU7CiAgICB2aWRl" +
+                "by5zcmM9c3JjOwogICAgc3RhZ2UuYXBwZW5kQ2hpbGQodmlkZW8pOwogIH0gZWxzZSBpZihraW5kPT09ImltYWdlIil7CiAg" +
+                "ICB2YXIgaW1nPW1ha2UoImltZyIpOwogICAgaW1nLnNyYz1zcmM7CiAgICBzdGFnZS5hcHBlbmRDaGlsZChpbWcpOwogIH0g" +
+                "ZWxzZSBpZihraW5kPT09ImF1ZGlvIil7CiAgICB2YXIgYm94PW1ha2UoImRpdiIpOwogICAgYm94LmNsYXNzTmFtZT0iYXVk" +
+                "aW9Cb3giOwogICAgdmFyIGlubmVyPW1ha2UoImRpdiIpOwogICAgdmFyIHRpdGxlPW1ha2UoImRpdiIpOwogICAgdGl0bGUu" +
+                "Y2xhc3NOYW1lPSJhdWRpb1RpdGxlIjsKICAgIHRpdGxlLnRleHRDb250ZW50PW5hbWU7CiAgICB2YXIgYXVkaW89bWFrZSgi" +
+                "YXVkaW8iKTsKICAgIGF1ZGlvLmNvbnRyb2xzPXRydWU7CiAgICBhdWRpby5hdXRvcGxheT10cnVlOwogICAgYXVkaW8uc3Jj" +
+                "PXNyYzsKICAgIGlubmVyLmFwcGVuZENoaWxkKHRpdGxlKTsKICAgIGlubmVyLmFwcGVuZENoaWxkKGF1ZGlvKTsKICAgIGJv" +
+                "eC5hcHBlbmRDaGlsZChpbm5lcik7CiAgICBzdGFnZS5hcHBlbmRDaGlsZChib3gpOwogIH0KCiAgZG9jdW1lbnQuYm9keS5h" +
+                "cHBlbmRDaGlsZChzdGFnZSk7Cn0KCmZpbGVJbnB1dC5vbmNoYW5nZT1mdW5jdGlvbigpewogIHZhciBmaWxlPWZpbGVJbnB1" +
+                "dC5maWxlcyAmJiBmaWxlSW5wdXQuZmlsZXNbMF07CiAgaWYoIWZpbGUpe3JldHVybjt9CgogIGlmKGN1cnJlbnRVcmwpe1VS" +
+                "TC5yZXZva2VPYmplY3RVUkwoY3VycmVudFVybCk7fQogIGN1cnJlbnRVcmw9VVJMLmNyZWF0ZU9iamVjdFVSTChmaWxlKTsK" +
+                "CiAgdmFyIHR5cGU9ZmlsZS50eXBlIHx8ICIiOwogIG1ldGEudGV4dENvbnRlbnQ9ZmlsZS5uYW1lKyIg4oCiICIrc2l6ZVRl" +
+                "eHQoZmlsZS5zaXplKSsiIOKAoiAiKyh0eXBlIHx8ICJ0aXBvIGRlc2NvbmhlY2lkbyIpOwoKICBpZih0eXBlLmluZGV4T2Yo" +
+                "InZpZGVvLyIpPT09MCl7CiAgICByZW5kZXJTdGFnZSgidmlkZW8iLCBjdXJyZW50VXJsLCBmaWxlLm5hbWUpOwogIH0gZWxz" +
+                "ZSBpZih0eXBlLmluZGV4T2YoImltYWdlLyIpPT09MCl7CiAgICByZW5kZXJTdGFnZSgiaW1hZ2UiLCBjdXJyZW50VXJsLCBm" +
+                "aWxlLm5hbWUpOwogIH0gZWxzZSBpZih0eXBlLmluZGV4T2YoImF1ZGlvLyIpPT09MCl7CiAgICByZW5kZXJTdGFnZSgiYXVk" +
+                "aW8iLCBjdXJyZW50VXJsLCBmaWxlLm5hbWUpOwogIH0gZWxzZSB7CiAgICBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgib3V0" +
+                "IikudGV4dENvbnRlbnQ9IkZvcm1hdG8gbsOjbyByZWNvbmhlY2lkbyBwZWxvIE1lZGlhIEh1Yi4iOwogIH0KfTsKPC9zY3Jp" +
+                "cHQ+CjwvYm9keT4KPC9odG1sPg==";
+        return "data:text/html;base64," + htmlB64;
     }
 
 }
