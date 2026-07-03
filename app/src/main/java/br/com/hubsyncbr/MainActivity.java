@@ -179,7 +179,7 @@ logo.setPadding(dp(8), 0, dp(8), 0);
         side.addView(navButton("Multi Screen", R.drawable.ic_hs_grid, false, v -> { if (focusMode) exitFocus(); enterGroup(activeGroup); }));
         side.addView(navButton("Favorites", R.drawable.ic_hs_heart, false, v -> Toast.makeText(this, "Favoritos entram depois", Toast.LENGTH_SHORT).show()));
         side.addView(navButton("Sports", R.drawable.ic_hs_sports, false, v -> Toast.makeText(this, "Modo esportes entra depois", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> { if (groupOverviewMode) enterGroup(activeGroup); addWindow(); }));
+        side.addView(navButton("Media Hub", R.drawable.ic_hs_browser, false, v -> openMediaHubWindow())); side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> { if (groupOverviewMode) enterGroup(activeGroup); addWindow(); }));
         side.addView(navButton("Settings", R.drawable.ic_hs_settings, false, v -> showAboutDialog()));
 
         View flex = new View(this);
@@ -1102,7 +1102,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         if ("duckduckgo".equals(engine)) engineName = "DuckDuckGo";
         else if ("bing".equals(engine)) engineName = "Bing";
         else if ("brave".equals(engine)) engineName = "Brave";
-        String mediaUrl = mediaHubDataUrl();
+        
         String searchBase = searchUrl("__Q__").replace("__Q__", "'+encodeURIComponent(q)+'");
         String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
                 "<style>" +
@@ -1119,7 +1119,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
                 "<form class='search' onsubmit=\"var q=document.getElementById('q').value.trim(); if(!q)return false; if(q.indexOf('.')>-1 && q.indexOf(' ')==-1){location.href=q.indexOf('http')==0?q:'https://'+q}else{location.href='" + searchBase + "'} return false;\">" +
                 "<input id='q' placeholder='Pesquisar ou digitar URL'></form><div class='engine'>Busca atual: " + engineName + "</div>" +
                 "<div class='grid'>" +
-                "<a class='card' href='" + mediaUrl + "'><b>Media Hub</b><span>Vídeos e arquivos offline</span></a>" +
+                "<a class='card' href='hubsyncbr://media'><b>Media Hub</b><span>Vídeos e arquivos offline</span></a>" +
                 "<a class='card' href='https://www.youtube.com'><b>YouTube</b><span>Vídeos e transmissões</span></a>" +
                 "<a class='card' href='https://www.twitch.tv'><b>Twitch</b><span>Lives e canais</span></a>" +
                 "<a class='card' href='https://www.kick.com'><b>Kick</b><span>Streams</span></a>" +
@@ -1161,7 +1161,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         if (raw == null || raw.trim().isEmpty()) return getHomepageUrl();
         String u = raw.trim();
         if (u.equals("about:blank")) return u;
-        if (u.equals("hubsyncbr://home")) return getHomepageUrl();
+        if (u.equals("hubsyncbr://home")) return getHomepageUrl(); if (u.equals("hubsyncbr://media")) return mediaHubDataUrl();
         if (u.startsWith("data:")) return u;
         if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("file://")) return u;
         boolean looksLikeUrl = u.contains(".") && !u.contains(" ");
@@ -1629,7 +1629,24 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
 
 
 
-    private String mediaHubDataUrl() {
+    
+    private void openMediaHubWindow() {
+        if (activeGroup == null) {
+            activeGroup = groups.isEmpty() ? createGroup("Meu Hub") : groups.get(0);
+        }
+        if (focusMode) exitFocus();
+        if (groupOverviewMode) enterGroup(activeGroup);
+        if (activeGroup.panes.size() >= MAX_OPEN_WINDOWS) {
+            Toast.makeText(this, "Limite do grupo nesta versão: " + MAX_OPEN_WINDOWS + " janelas", Toast.LENGTH_LONG).show();
+            return;
+        }
+        StreamPane pane = createPane("Media Hub", mediaHubDataUrl(), accentForIndex(panes.size()));
+        pane.loadDefault();
+        showPane(pane);
+        Toast.makeText(this, "Media Hub aberto", Toast.LENGTH_SHORT).show();
+    }
+
+private String mediaHubDataUrl() {
         String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
                 "<style>" +
                 "*{box-sizing:border-box}body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:22px;}" +
