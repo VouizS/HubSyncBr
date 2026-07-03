@@ -46,28 +46,36 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    // ===== HS_UPDATE_031_FAST_OPEN_OPTIMIZATION =====
+    private long hsLastVisibilityRestoreMs = 0L;
+    private long hsLastCoreTransformMs = 0L;
+
+    private boolean hsShouldRunVisibilityRestoreNow() {
+        try {
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - hsLastVisibilityRestoreMs < 420L) return false;
+            hsLastVisibilityRestoreMs = now;
+            return true;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+    // ===== fim HS_UPDATE_031_FAST_OPEN_OPTIMIZATION =====
+
+
+
     // ===== HS_UPDATE_030_FORCE_HIDE_INTERNAL_PLUS =====
     private void hsScheduleForceHideInternalPlusSlots() {
-        try {
-            android.view.View root = getWindow().getDecorView();
-            root.postDelayed(() -> hsForceHideInternalPlusSlots(), 120);
-            root.postDelayed(() -> hsForceHideInternalPlusSlots(), 450);
-            root.postDelayed(() -> hsForceHideInternalPlusSlots(), 950);
-            root.postDelayed(() -> hsForceHideInternalPlusSlots(), 1600);
-        } catch (Exception ignored) {
-        }
+        // UPDATE 031: no-op para reduzir lag ao abrir janelas.
+        // O + interno sera tratado depois com alvo direto, sem varredura profunda.
     }
 
+
     private void hsForceHideInternalPlusSlots() {
-        try {
-            hsInternalAddSlotsVisible = false;
-            android.view.View root = getWindow().getDecorView();
-            hsForceHideInternalPlusSlotsRecursive(root);
-            hsRestoreWindowVisibilitySafe();
-            hsScheduleForceHideInternalPlusSlots();
-        } catch (Exception ignored) {
-        }
+        // UPDATE 031: no-op intencional.
+        // As tentativas anteriores de esconder o + interno criavam varreduras repetidas e lag.
     }
+
 
     private void hsForceHideInternalPlusSlotsRecursive(android.view.View view) {
         if (view == null) return;
@@ -175,40 +183,27 @@ public class MainActivity extends Activity {
 
     private void hsToggleInternalAddSlots() {
         try {
-            hsInternalAddSlotsVisible = false;
-            hsForceHideInternalPlusSlots();
-            android.widget.Toast.makeText(this, "Slots + internos ocultos", android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(this, "Use o + do topo para abrir janela", android.widget.Toast.LENGTH_SHORT).show();
         } catch (Exception ignored) {
         }
     }
 
 
+
     private void hsBindTopbarPlusToggleSafe() {
-        try { hsBindTopbarPlusToggleRecursive(getWindow().getDecorView()); } catch (Exception ignored) {}
+        try {
+            // UPDATE 031:
+            // Não prendemos mais long press no +.
+            // O clique original do app fica livre para abrir janela normalmente.
+        } catch (Exception ignored) {
+        }
     }
 
+
     private void hsBindTopbarPlusToggleRecursive(android.view.View view) {
-        if (view == null) return;
-        try {
-            if (view instanceof android.widget.TextView) {
-                android.widget.TextView tv = (android.widget.TextView) view;
-                CharSequence cs = tv.getText();
-                String text = cs == null ? "" : cs.toString().trim();
-                if ("+".equals(text) || "＋".equals(text)) {
-                    android.graphics.Rect r = new android.graphics.Rect();
-                    tv.getGlobalVisibleRect(r);
-                    if (r.top < dp(140)) {
-                        tv.setLongClickable(true);
-                        tv.setOnLongClickListener(v -> { hsToggleInternalAddSlots(); return true; });
-                    }
-                }
-            }
-            if (view instanceof android.view.ViewGroup) {
-                android.view.ViewGroup g = (android.view.ViewGroup) view;
-                for (int i = 0; i < g.getChildCount(); i++) hsBindTopbarPlusToggleRecursive(g.getChildAt(i));
-            }
-        } catch (Exception ignored) {}
+        // UPDATE 031: no-op. Mantem clique original do +.
     }
+
 
     private boolean hsIsWindowLabelContainer(android.view.ViewGroup group) {
         try {
@@ -251,13 +246,9 @@ public class MainActivity extends Activity {
     }
 
     private void hsApplyInternalAddSlotsVisibilitySafe() {
-        try {
-            android.view.View root = getWindow().getDecorView();
-            if (hsInternalAddSlotsVisible) hsRestoreWindowVisibilitySafe();
-            hsSetInternalAddSlotsVisibleRecursive(root, hsInternalAddSlotsVisible);
-            hsRestoreWindowVisibilitySafe();
-        } catch (Exception ignored) {}
+        // UPDATE 031: no-op leve.
     }
+
     // ===== fim HS_UPDATE_028_SLOTS_TOGGLE_SCROLL_GUARD =====
 
 
@@ -265,11 +256,13 @@ public class MainActivity extends Activity {
     // ===== HS_UPDATE_027_RESTORE_WINDOWS =====
     private void hsRestoreWindowVisibilitySafe() {
         try {
+            if (!hsShouldRunVisibilityRestoreNow()) return;
             android.view.View root = getWindow().getDecorView();
             hsRestoreWindowVisibilityRecursive(root);
         } catch (Exception ignored) {
         }
     }
+
 
     private void hsRestoreWindowVisibilityRecursive(android.view.View view) {
         if (view == null) return;
@@ -328,20 +321,18 @@ public class MainActivity extends Activity {
             getWindow().getDecorView().postDelayed(() -> {
                 try {
                     hsCoreIsolatedTarget = null;
-                    hsRestoreWindowVisibilitySafe();
                     android.view.View workspace = hsFindWorkspaceTarget();
                     if (workspace != null) {
                         hsApplyCoreTransform(workspace);
                     }
                     hsRestoreWindowVisibilitySafe();
-                    hsBindTopbarPlusToggleSafe();
-                    hsScheduleForceHideInternalPlusSlots();
                 } catch (Exception ignored) {
                 }
-            }, 350);
+            }, 220);
         } catch (Exception ignored) {
         }
     }
+
 
 
 
@@ -603,6 +594,13 @@ public class MainActivity extends Activity {
     private void hsApplyCoreTransform(android.view.View workspace) {
         try {
             if (workspace == null) return;
+
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - hsLastCoreTransformMs < 16L) {
+                return;
+            }
+            hsLastCoreTransformMs = now;
+
             hsKeepCoreInsideSafeBounds(workspace);
             workspace.setPivotX(workspace.getWidth() / 2.0f);
             workspace.setPivotY(workspace.getHeight() / 2.0f);
@@ -610,10 +608,10 @@ public class MainActivity extends Activity {
             workspace.setScaleY(hsCoreScaleFree);
             workspace.setTranslationX(hsCoreOffsetXFree);
             workspace.setTranslationY(hsCoreOffsetYFree);
-            hsRestoreWindowVisibilitySafe();
         } catch (Exception ignored) {
         }
     }
+
 
 
 
@@ -706,25 +704,18 @@ public class MainActivity extends Activity {
     }
 
     private void hsApplyAddSlotVisibility() {
-        try {
-            hsInternalAddSlotsVisible = false;
-            hsForceHideInternalPlusSlots();
-            hsRestoreWindowVisibilitySafe();
-        } catch (Exception ignored) {
-            try { hsRestoreWindowVisibilitySafe(); } catch (Exception ignored2) {}
-        }
+        // UPDATE 031: no-op leve.
+        // Preserva as janelas e evita varrer toda a hierarquia ao abrir uma nova janela.
     }
+
 
 
 
 
     private void hsApplyAddSlotVisibilityRecursive(android.view.View view, boolean hasWindow) {
-        try {
-            hsInternalAddSlotsVisible = false;
-            hsForceHideInternalPlusSlots();
-        } catch (Exception ignored) {
-        }
+        // UPDATE 031: no-op leve para evitar lag.
     }
+
 
 
 
@@ -732,19 +723,19 @@ public class MainActivity extends Activity {
 
 
     private void rebuildAllWindows() {
-        // Stub seguro criado pela 0.7.5.4 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.7 para compatibilidade entre versoes.
     }
 
     private void renderWindows() {
-        // Stub seguro criado pela 0.7.5.4 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.7 para compatibilidade entre versoes.
     }
 
     private void refreshWindows() {
-        // Stub seguro criado pela 0.7.5.4 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.7 para compatibilidade entre versoes.
     }
 
 
-    // ===== HubSyncBr 0.7.5.4 - Expanded Core Workspace =====
+    // ===== HubSyncBr 0.7.5.7 - Expanded Core Workspace =====
     private static final int CORE_MODE_COMPACT = 0;
     private static final int CORE_MODE_WIDE = 1;
     private static final int CORE_MODE_DESKTOP = 2;
