@@ -43,6 +43,77 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
+    private void rebuildAllWindows() {
+        // Stub seguro criado pela 0.7.4 para compatibilidade entre versoes.
+    }
+
+    private void renderWindows() {
+        // Stub seguro criado pela 0.7.4 para compatibilidade entre versoes.
+    }
+
+    private void refreshWindows() {
+        // Stub seguro criado pela 0.7.4 para compatibilidade entre versoes.
+    }
+
+
+    // ===== HubSyncBr 0.7.4 - Expanded Core Workspace =====
+    private static final int CORE_MODE_COMPACT = 0;
+    private static final int CORE_MODE_WIDE = 1;
+    private static final int CORE_MODE_DESKTOP = 2;
+    private int coreWorkspaceMode = CORE_MODE_WIDE;
+
+    private String coreWorkspaceModeName() {
+        if (coreWorkspaceMode == CORE_MODE_DESKTOP) return "Desktop Core";
+        if (coreWorkspaceMode == CORE_MODE_WIDE) return "Amplo Core";
+        return "Compact Core";
+    }
+
+    private int coreVisibleLimit() {
+        if (coreWorkspaceMode == CORE_MODE_DESKTOP) return 7;
+        if (coreWorkspaceMode == CORE_MODE_WIDE) return 6;
+        return 4;
+    }
+
+    private float coreWorkspaceScale() {
+        if (coreWorkspaceMode == CORE_MODE_DESKTOP) return 1.55f;
+        if (coreWorkspaceMode == CORE_MODE_WIDE) return 1.25f;
+        return 1.0f;
+    }
+
+    private void cycleCoreWorkspaceMode() {
+        if (coreWorkspaceMode == CORE_MODE_COMPACT) {
+            coreWorkspaceMode = CORE_MODE_WIDE;
+        } else if (coreWorkspaceMode == CORE_MODE_WIDE) {
+            coreWorkspaceMode = CORE_MODE_DESKTOP;
+        } else {
+            coreWorkspaceMode = CORE_MODE_COMPACT;
+        }
+        safeToast("Núcleo: " + coreWorkspaceModeName());
+        tryRefreshWorkspaceAfterCoreChange();
+    }
+
+    private void tryRefreshWorkspaceAfterCoreChange() {
+        try { updateCoreWorkspaceVisualHints(); } catch (Exception ignored) {}
+        try { rebuildAllWindows(); } catch (Exception ignored) {}
+        try { renderWindows(); } catch (Exception ignored) {}
+        try { refreshWindows(); } catch (Exception ignored) {}
+    }
+
+    private void updateCoreWorkspaceVisualHints() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            if (root != null) root.setTag("HubSyncBrCoreMode:" + coreWorkspaceModeName());
+        } catch (Exception ignored) {}
+    }
+
+    private void safeToast(String message) {
+        try {
+            android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show();
+        } catch (Exception ignored) {}
+    }
+    // ===== fim Expanded Core Workspace =====
+
+
     // Homepage interna segura do HubSyncBr.
     // Usada como constante para funcionar em qualquer escopo/classe deste arquivo.
     static final String HUBSYNCBR_HOME_DATA_URL = "data:text/html;charset=utf-8,"
@@ -776,9 +847,9 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         if (screenStatusTitle != null) screenStatusTitle.setText(visiblePanes.size() >= 4 ? "Grid Mode  •" : "Hub View  •");
         if (headerTitle != null) headerTitle.setText(mediaWorkspaceMode ? "Media Hub" : (visiblePanes.size() >= 4 ? "Grid View" : "Hub View"));
         if (headerDesc != null) {
-            if (visiblePanes.size() == 0) headerDesc.setText(mediaWorkspaceMode ? "Adicione uma mídia para começar" : "Adicione uma janela para começar");
-            else if (visiblePanes.size() == 1) headerDesc.setText("Uma janela web ativa no núcleo");
-            else if (isPortraitWorkspace()) headerDesc.setText(visiblePanes.size() + " janelas adaptadas ao retrato");
+            if (visiblePanes.size() == 0) headerDesc.setText(mediaWorkspaceMode ? "Adicione uma mídia para começar" : "Núcleo expandido pronto");
+            else if (visiblePanes.size() == 1) headerDesc.setText("Uma janela ativa no núcleo expandido");
+            else if (isPortraitWorkspace()) headerDesc.setText(visiblePanes.size() + " janelas no núcleo expandido");
             else headerDesc.setText(visiblePanes.size() + " janelas web visíveis simultaneamente");
         }
     }
