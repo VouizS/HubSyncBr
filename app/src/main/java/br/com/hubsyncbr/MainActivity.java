@@ -138,7 +138,7 @@ public class MainActivity extends Activity {
 
         emptyState = createEmptyState();
 
-        activeGroup = createGroup("Meu Hub");
+        activeGroup = createGroup("Meu Hub"); webGroup = activeGroup;
         StreamPane a = createPane("Hub Home", getHomepageUrl(), PURPLE);
         a.loadDefault();
         showPane(a);
@@ -175,11 +175,11 @@ logo.setPadding(dp(8), 0, dp(8), 0);
         sub.setPadding(dp(8), 0, dp(8), dp(10));
         side.addView(sub, new LinearLayout.LayoutParams(-1, dp(32)));
 
-        side.addView(navButton("Home", R.drawable.ic_hs_home, true, v -> showGroupsOverview()));
-        side.addView(navButton("Multi Screen", R.drawable.ic_hs_grid, false, v -> { if (focusMode) exitFocus(); enterGroup(activeGroup); }));
+        side.addView(navButton("Home", R.drawable.ic_hs_home, true, v -> openWebWorkspace()));
+        side.addView(navButton("Multi Screen", R.drawable.ic_hs_grid, false, v -> openWebWorkspace()));
         side.addView(navButton("Favorites", R.drawable.ic_hs_heart, false, v -> Toast.makeText(this, "Favoritos entram depois", Toast.LENGTH_SHORT).show()));
         side.addView(navButton("Sports", R.drawable.ic_hs_sports, false, v -> Toast.makeText(this, "Modo esportes entra depois", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("Media Hub", R.drawable.ic_hs_media, false, v -> openMediaHubWindow())); side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> { if (groupOverviewMode) enterGroup(activeGroup); addWindow(); }));
+        side.addView(navButton("Media Hub", R.drawable.ic_hs_media, false, v -> openMediaWorkspace())); side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> { if (groupOverviewMode) enterGroup(activeGroup); addWindow(); }));
         side.addView(navButton("Settings", R.drawable.ic_hs_settings, false, v -> showAboutDialog()));
 
         View flex = new View(this);
@@ -460,22 +460,33 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         return accents[Math.abs(index) % accents.length];
     }
 
+    
     private void addWindow() {
-        if (activeGroup == null) activeGroup = groups.isEmpty() ? createGroup("Meu Hub") : groups.get(0);
+        if (mediaWorkspaceMode) {
+            if (mediaGroup == null) mediaGroup = createGroup("Media Hub");
+            activeGroup = mediaGroup;
+        } else {
+            if (webGroup == null) webGroup = groups.isEmpty() ? createGroup("Meu Hub") : groups.get(0);
+            activeGroup = webGroup;
+        }
+
         if (groupOverviewMode) groupOverviewMode = false;
+
         if (activeGroup.panes.size() >= MAX_OPEN_WINDOWS) {
             Toast.makeText(this, "Limite do grupo nesta versão: " + MAX_OPEN_WINDOWS + " janelas", Toast.LENGTH_LONG).show();
             return;
         }
-        if (panes.size() >= MAX_OPEN_WINDOWS * Math.max(1, groups.size())) {
-            Toast.makeText(this, "Limite técnico desta versão: " + MAX_OPEN_WINDOWS + " janelas abertas", Toast.LENGTH_LONG).show();
-            return;
-        }
-        StreamPane pane = createPane("Hub Home", getHomepageUrl(), accentForIndex(panes.size()));
+
+        String paneName = mediaWorkspaceMode ? "Media Hub" : "Hub Home";
+        String paneUrl = mediaWorkspaceMode ? mediaHubDataUrl() : getHomepageUrl();
+
+        StreamPane pane = createPane(paneName, paneUrl, accentForIndex(panes.size()));
+        if (mediaWorkspaceMode) pane.setMediaMode(true);
         pane.loadDefault();
+
         if (visiblePanes.size() < MAX_VISIBLE_WINDOWS) {
             showPane(pane);
-            Toast.makeText(this, "Janela adicionada", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, mediaWorkspaceMode ? "Janela Media Hub adicionada" : "Janela adicionada", Toast.LENGTH_SHORT).show();
         } else {
             Toast.makeText(this, "Janela criada e minimizada. Abra o gerenciador para trocar.", Toast.LENGTH_LONG).show();
             showWindowManager();
@@ -750,9 +761,9 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         }
         if (screenStatusDesc != null) screenStatusDesc.setText(visiblePanes.size() + " visíveis / " + (activeGroup == null ? panes.size() : activeGroup.panes.size()) + " no grupo");
         if (screenStatusTitle != null) screenStatusTitle.setText(visiblePanes.size() >= 4 ? "Grid Mode  •" : "Hub View  •");
-        if (headerTitle != null) headerTitle.setText(visiblePanes.size() >= 4 ? "Grid View" : "Hub View");
+        if (headerTitle != null) headerTitle.setText(mediaWorkspaceMode ? "Media Hub" : (visiblePanes.size() >= 4 ? "Grid View" : "Hub View"));
         if (headerDesc != null) {
-            if (visiblePanes.size() == 0) headerDesc.setText("Adicione uma janela para começar");
+            if (visiblePanes.size() == 0) headerDesc.setText(mediaWorkspaceMode ? "Adicione uma mídia para começar" : "Adicione uma janela para começar");
             else if (visiblePanes.size() == 1) headerDesc.setText("Uma janela web ativa no núcleo");
             else if (isPortraitWorkspace()) headerDesc.setText(visiblePanes.size() + " janelas adaptadas ao retrato");
             else headerDesc.setText(visiblePanes.size() + " janelas web visíveis simultaneamente");
@@ -1337,7 +1348,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
                 if (scrollY > oldScrollY + dp(3)) toolbar.setVisibility(View.GONE);
                 else if (scrollY < oldScrollY) toolbar.setVisibility(View.VISIBLE);
             });
-            webView.setOnClickListener(v -> toolbar.setVisibility(View.VISIBLE));
+            webView.setOnClickListener(v -> { if (!mediaMode && toolbar != null) toolbar.setVisibility(View.VISIBLE); });
             container.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
 
             focusButton = new Button(MainActivity.this);
@@ -1360,7 +1371,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
                 lineView.setLayoutParams(lp);
             }
             View toolbarView = container.getChildAt(2);
-            if (toolbarView != null) toolbarView.setVisibility(compact ? View.GONE : View.VISIBLE);
+            if (toolbarView != null) toolbarView.setVisibility(mediaMode ? View.GONE : (compact ? View.GONE : View.VISIBLE));
             title.setTextSize(compact ? 10 : 12);
         }
 
@@ -1630,47 +1641,74 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
 
 
     
-    private void openMediaHubWindow() {
-        if (activeGroup == null) {
-            activeGroup = groups.isEmpty() ? createGroup("Meu Hub") : groups.get(0);
+    
+    private void openWebWorkspace() {
+        mediaWorkspaceMode = false;
+        if (webGroup == null) {
+            webGroup = groups.isEmpty() ? createGroup("Meu Hub") : groups.get(0);
         }
+        activeGroup = webGroup;
+        groupOverviewMode = false;
         if (focusMode) exitFocus();
-        if (groupOverviewMode) enterGroup(activeGroup);
-        if (activeGroup.panes.size() >= MAX_OPEN_WINDOWS) {
-            Toast.makeText(this, "Limite do grupo nesta versão: " + MAX_OPEN_WINDOWS + " janelas", Toast.LENGTH_LONG).show();
-            return;
-        }
-        StreamPane pane = createPane("Media Hub", mediaHubDataUrl(), accentForIndex(panes.size()));
-        pane.loadDefault();
-        showPane(pane);
-        Toast.makeText(this, "Media Hub aberto", Toast.LENGTH_SHORT).show();
+        visiblePanes.clear();
+        visiblePanes.addAll(activeGroup.visible);
+        updateWindowLayout();
+        Toast.makeText(this, "Workspace web", Toast.LENGTH_SHORT).show();
     }
 
-private String mediaHubDataUrl() {
+    private void openMediaWorkspace() {
+        mediaWorkspaceMode = true;
+        if (mediaGroup == null) {
+            mediaGroup = createGroup("Media Hub");
+        }
+        activeGroup = mediaGroup;
+        groupOverviewMode = false;
+        if (focusMode) exitFocus();
+        visiblePanes.clear();
+        visiblePanes.addAll(mediaGroup.visible);
+        updateWindowLayout();
+        Toast.makeText(this, "Media Hub", Toast.LENGTH_SHORT).show();
+    }
+
+
+    private void openMediaHubWindow() {
+        openMediaWorkspace();
+        addWindow();
+    }
+
+
+    private String mediaHubDataUrl() {
         String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
                 "<style>" +
-                "*{box-sizing:border-box}body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:22px;}" +
-                ".wrap{max-width:980px;margin:auto}.title{font-size:30px;font-weight:850;letter-spacing:-.5px;margin-top:12px}" +
-                ".tag{color:#9aa3b8;margin:8px 0 20px;font-size:14px;line-height:1.35}.panel{background:#101420;border:1px solid #25304a;border-radius:20px;padding:18px;margin-top:14px}" +
+                "*{box-sizing:border-box}body{margin:0;background:#070a12;color:#ecf0ff;font-family:system-ui,-apple-system,Segoe UI,Arial;padding:22px;overflow:hidden}" +
+                ".wrap{height:100vh;max-width:980px;margin:auto;display:flex;flex-direction:column}" +
+                ".title{font-size:30px;font-weight:850;letter-spacing:-.5px;margin-top:12px}.tag{color:#9aa3b8;margin:8px 0 18px;font-size:14px;line-height:1.35}" +
+                ".panel{background:#101420;border:1px solid #25304a;border-radius:20px;padding:18px;margin-top:12px}" +
                 ".pick{display:inline-flex;align-items:center;justify-content:center;min-height:48px;border-radius:16px;border:1px solid #7c3aed;background:#121827;color:#fff;font-weight:800;padding:0 18px;cursor:pointer}" +
-                "input{display:none}.hint{color:#7f8ca8;font-size:12px;margin-top:10px;line-height:1.4}.name{font-weight:800;margin:16px 0 10px;color:#dce7ff}" +
-                "video,audio,img{width:100%;max-height:62vh;border-radius:18px;background:#000;border:1px solid #25304a;object-fit:contain}" +
-                ".empty{border:1px dashed #33405d;border-radius:18px;padding:24px;text-align:center;color:#9aa3b8}.badge{display:inline-block;margin-top:10px;color:#38bdf8;font-size:12px}" +
+                "input{display:none}.hint{color:#7f8ca8;font-size:12px;margin-top:10px;line-height:1.4}.name{font-weight:800;margin:0;color:#dce7ff}" +
+                ".empty{border:1px dashed #33405d;border-radius:18px;padding:24px;text-align:center;color:#9aa3b8;margin-top:14px}.badge{display:block;margin-top:10px;color:#38bdf8;font-size:12px;word-break:break-word}" +
+                "#out{flex:1;min-height:120px;overflow:hidden}.stage{position:fixed;inset:0;background:#000;z-index:20;display:flex;align-items:center;justify-content:center}" +
+                ".stage video,.stage img{width:100vw;height:100vh;max-width:100vw;max-height:100vh;object-fit:contain;background:#000;border:0;border-radius:0}" +
+                ".stage audio{width:88vw}.stage .audioBox{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:linear-gradient(135deg,#070a12,#111827)}" +
+                ".closeStage{position:fixed;top:10px;right:10px;z-index:25;border:0;border-radius:999px;background:rgba(15,19,30,.72);color:#fff;font-weight:800;padding:10px 14px}" +
+                "body.playing .wrap{display:none}" +
                 "</style></head><body><div class='wrap'>" +
                 "<div class='title'>Media Hub</div><div class='tag'>Abra vídeos, músicas, GIFs e imagens do aparelho para usar offline dentro do HubSyncBr.</div>" +
                 "<div class='panel'><label class='pick'>Selecionar mídia<input id='file' type='file' accept='video/*,audio/*,image/*'></label>" +
                 "<div class='hint'>Arquivos grandes não são copiados para o app. O HubSyncBr usa o seletor seguro do Android e reproduz localmente quando o formato é suportado pelo aparelho.</div>" +
-                "<div id='meta' class='badge'></div></div><div id='out' class='panel empty'>Nenhuma mídia selecionada.</div>" +
+                "<div id='meta' class='badge'></div></div><div id='out' class='empty'>Nenhuma mídia selecionada.</div></div>" +
                 "<script>" +
                 "var f=document.getElementById('file'),out=document.getElementById('out'),meta=document.getElementById('meta'),url=null;" +
-                "function size(n){if(!n)return ''; var u=['B','KB','MB','GB'];var i=0;while(n>1024&&i<u.length-1){n/=1024;i++}return n.toFixed(i?1:0)+' '+u[i]}" +
-                "f.onchange=function(){var file=f.files&&f.files[0]; if(!file)return; if(url)URL.revokeObjectURL(url); url=URL.createObjectURL(file); var t=file.type||''; meta.textContent=file.name+' • '+size(file.size)+' • '+(t||'tipo desconhecido');" +
-                "if(t.indexOf('video/')===0){out.className='panel';out.innerHTML='<div class=name>'+file.name+'</div><video controls autoplay playsinline src='+url+'></video>'}" +
-                "else if(t.indexOf('audio/')===0){out.className='panel';out.innerHTML='<div class=name>'+file.name+'</div><audio controls autoplay src='+url+'></audio>'}" +
-                "else if(t.indexOf('image/')===0){out.className='panel';out.innerHTML='<div class=name>'+file.name+'</div><img src='+url+'>'}" +
-                "else{out.className='panel empty';out.textContent='Formato não reconhecido pelo Media Hub.'}" +
+                "function size(n){if(!n)return '';var u=['B','KB','MB','GB'];var i=0;while(n>1024&&i<u.length-1){n/=1024;i++}return n.toFixed(i?1:0)+' '+u[i]}" +
+                "function closeStage(){var st=document.getElementById('stage');if(st)st.remove();document.body.className='';}" +
+                "function renderStage(inner){document.body.className='playing';var old=document.getElementById('stage');if(old)old.remove();var st=document.createElement('div');st.id='stage';st.className='stage';st.innerHTML='<button class=closeStage onclick=closeStage()>×</button>'+inner;document.body.appendChild(st);}" +
+                "f.onchange=function(){var file=f.files&&f.files[0];if(!file)return;if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(file);var t=file.type||'';meta.textContent=file.name+' • '+size(file.size)+' • '+(t||'tipo desconhecido');" +
+                "if(t.indexOf('video/')===0){renderStage('<video controls autoplay playsinline src="'+url+'"></video>')}" +
+                "else if(t.indexOf('audio/')===0){renderStage('<div class=audioBox><div><div class=name>'+file.name+'</div><br><audio controls autoplay src="'+url+'"></audio></div></div>')}" +
+                "else if(t.indexOf('image/')===0){renderStage('<img src="'+url+'">')}" +
+                "else{out.className='empty';out.textContent='Formato não reconhecido pelo Media Hub.'}" +
                 "};" +
-                "</script></div></body></html>";
+                "</script></body></html>";
         return "data:text/html;charset=utf-8," + Uri.encode(html);
     }
 
