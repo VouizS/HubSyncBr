@@ -1205,6 +1205,17 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
     }
 
     private class StreamPane {
+        // Media Hub: janelas sem barra de navegador.
+        private boolean mediaMode = false;
+
+        void setMediaMode(boolean enabled) {
+            mediaMode = enabled;
+            if (toolbarView != null) {
+                toolbarView.setVisibility(enabled ? View.GONE : View.VISIBLE);
+            }
+        }
+
+
         final LinearLayout container;
         final TextView title;
         final EditText urlBar;
