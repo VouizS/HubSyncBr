@@ -87,6 +87,11 @@ public class MainActivity extends Activity {
     private final List<WindowGroup> groups = new ArrayList<>();
     private WindowGroup activeGroup;
 
+    // Workspaces separados: web/home e Media Hub
+    private WindowGroup webGroup;
+    private WindowGroup mediaGroup;
+    private boolean mediaWorkspaceMode = false;
+
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
     private FrameLayout fullscreenHost;

@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 10
-        versionName '0.7.3.2-media-b64-fix'
+        versionName '0.7.3.3-media-fields-fix'
     }
 
     buildTypes {
