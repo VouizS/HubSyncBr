@@ -43,6 +43,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
+    // Homepage interna segura do HubSyncBr.
+    // Usada como constante para funcionar em qualquer escopo/classe deste arquivo.
+    static final String HUBSYNCBR_HOME_DATA_URL = "data:text/html;charset=utf-8,"
+            + "%3C!doctype%20html%3E%3Chtml%3E%3Chead%3E%3Cmeta%20name%3D%22viewport%22%20content%3D%22width%3Ddevice-width%2Cinitial-scale%3D1%22%3E"
+            + "%3Cstyle%3Ebody%7Bmargin%3A0%3Bbackground%3A%23080b14%3Bcolor%3A%23f4f6ff%3Bfont-family%3AArial%2Csans-serif%3B%7D.main%7Bpadding%3A32px%3B%7Dh1%7Bfont-size%3A38px%3Bmargin%3A0%200%2010px%3B%7Dp%7Bcolor%3A%239aa4bd%3Bfont-size%3A18px%3B%7D.search%7Bmargin%3A28px%200%2020px%3Bborder%3A2px%20solid%20%237c4dff%3Bborder-radius%3A24px%3Bpadding%3A18px%2020px%3Bcolor%3A%238e98b3%3B%7D.grid%7Bdisplay%3Agrid%3Bgrid-template-columns%3Arepeat(2%2Cminmax(0%2C1fr))%3Bgap%3A14px%3B%7D.card%7Bbackground%3A%23101826%3Bborder%3A1px%20solid%20%23212a3d%3Bborder-radius%3A18px%3Bpadding%3A18px%3B%7D.card%20b%7Bdisplay%3Ablock%3Bfont-size%3A18px%3Bmargin-bottom%3A6px%3B%7D.card%20span%7Bcolor%3A%239aa4bd%3Bfont-size%3A14px%3B%7D%3C%2Fstyle%3E%3C%2Fhead%3E"
+            + "%3Cbody%3E%3Cdiv%20class%3D%22main%22%3E%3Ch1%3EHubSyncBr%3C%2Fh1%3E%3Cp%3ESeu%20browser%20workspace%20para%20janelas%2C%20grupos%20e%20transmissoes.%3C%2Fp%3E%3Cdiv%20class%3D%22search%22%3EPesquisar%20ou%20digitar%20URL%3C%2Fdiv%3E"
+            + "%3Cdiv%20class%3D%22grid%22%3E%3Cdiv%20class%3D%22card%22%3E%3Cb%3EMedia%20Hub%3C%2Fb%3E%3Cspan%3EVideos%20e%20arquivos%20offline%3C%2Fspan%3E%3C%2Fdiv%3E%3Cdiv%20class%3D%22card%22%3E%3Cb%3EYouTube%3C%2Fb%3E%3Cspan%3EVideos%20e%20transmissoes%3C%2Fspan%3E%3C%2Fdiv%3E%3Cdiv%20class%3D%22card%22%3E%3Cb%3ETwitch%3C%2Fb%3E%3Cspan%3ELives%20e%20canais%3C%2Fspan%3E%3C%2Fdiv%3E%3Cdiv%20class%3D%22card%22%3E%3Cb%3EGoogle%3C%2Fb%3E%3Cspan%3EPesquisa%20web%3C%2Fspan%3E%3C%2Fdiv%3E%3C%2Fdiv%3E%3C%2Fdiv%3E%3C%2Fbody%3E%3C%2Fhtml%3E";
+
 
     private static final int HS_FILE_CHOOSER_REQ = 7013;
     private ValueCallback<Uri[]> hsFileChooserCallback;
@@ -1091,13 +1099,13 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         if ("google".equals(mode)) return "https://www.google.com";
         if ("custom".equals(mode)) {
             String custom = prefs.getString("custom_homepage", "https://www.google.com");
-            if (custom == null || custom.trim().isEmpty()) return hubHomeDataUrl();
+            if (custom == null || custom.trim().isEmpty()) return MainActivity.HUBSYNCBR_HOME_DATA_URL;
             String c = custom.trim();
             if (c.startsWith("http://") || c.startsWith("https://")) return c;
             if (c.contains(".")) return "https://" + c;
             return searchUrl(c);
         }
-        return hubHomeDataUrl();
+        return MainActivity.HUBSYNCBR_HOME_DATA_URL;
     }
 
     private String searchUrl(String query) {
@@ -1208,12 +1216,11 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         // Media Hub: janelas sem barra de navegador.
         private boolean mediaMode = false;
 
-        void setMediaMode(boolean enabled) {
-            mediaMode = enabled;
-            if (toolbarView != null) {
-                toolbarView.setVisibility(enabled ? View.GONE : View.VISIBLE);
-            }
+                void setMediaMode(boolean enabled) {
+            this.mediaMode = enabled;
+            // Media Hub seguro: a topbar sera ocultada depois usando a referencia correta.
         }
+
 
 
         final LinearLayout container;

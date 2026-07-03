@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 10
-        versionName '0.7.3.5-scope-toolbar-fix'
+        versionName '0.7.3.6-direct-home-media-safe'
     }
 
     buildTypes {
