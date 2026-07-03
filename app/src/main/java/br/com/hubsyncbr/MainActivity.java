@@ -287,19 +287,19 @@ public class MainActivity extends Activity {
 
 
     private void rebuildAllWindows() {
-        // Stub seguro criado pela 0.7.5 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.1 para compatibilidade entre versoes.
     }
 
     private void renderWindows() {
-        // Stub seguro criado pela 0.7.5 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.1 para compatibilidade entre versoes.
     }
 
     private void refreshWindows() {
-        // Stub seguro criado pela 0.7.5 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.1 para compatibilidade entre versoes.
     }
 
 
-    // ===== HubSyncBr 0.7.5 - Expanded Core Workspace =====
+    // ===== HubSyncBr 0.7.5.1 - Expanded Core Workspace =====
     private static final int CORE_MODE_COMPACT = 0;
     private static final int CORE_MODE_WIDE = 1;
     private static final int CORE_MODE_DESKTOP = 2;
@@ -1406,9 +1406,9 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         return getSharedPreferences("hub", MODE_PRIVATE);
     }
 
-    private String hsGoogleHomeUrl() {
-        return hsGoogleHomeUrl();
-    }
+    
+    // hsGoogleHomeUrl duplicado removido pela UPDATE 025
+
 
 
     private String searchUrl(String query) {
