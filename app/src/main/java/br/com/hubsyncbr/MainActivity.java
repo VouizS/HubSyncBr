@@ -46,22 +46,85 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    // ===== HS_UPDATE_027_RESTORE_WINDOWS =====
+    private void hsRestoreWindowVisibilitySafe() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            hsRestoreWindowVisibilityRecursive(root);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hsRestoreWindowVisibilityRecursive(android.view.View view) {
+        if (view == null) return;
+        try {
+            if (view instanceof android.webkit.WebView) {
+                view.setVisibility(android.view.View.VISIBLE);
+                view.setAlpha(1.0f);
+            }
+
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+
+                boolean hasWindowLabel =
+                        hsContainsText(group, "Janela 1") ||
+                        hsContainsText(group, "Janela 2") ||
+                        hsContainsText(group, "Janela 3") ||
+                        hsContainsText(group, "Janela 4") ||
+                        hsContainsText(group, "Janela 5") ||
+                        hsContainsText(group, "Janela 6") ||
+                        hsContainsText(group, "Janela 7");
+
+                boolean isWindowManagerDialog = hsContainsText(group, "Janelas abertas");
+                boolean isFixedShell = hsLooksLikeFixedShell(group);
+
+                if (hasWindowLabel && !isWindowManagerDialog && !isFixedShell) {
+                    group.setVisibility(android.view.View.VISIBLE);
+                    group.setAlpha(1.0f);
+                }
+
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    hsRestoreWindowVisibilityRecursive(group.getChildAt(i));
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hsResetCoreTransformWithoutToast() {
+        try {
+            hsCoreScaleFree = 1.0f;
+            hsCoreOffsetXFree = 0.0f;
+            hsCoreOffsetYFree = 0.0f;
+            android.view.View workspace = hsFindWorkspaceTarget();
+            if (workspace != null) {
+                hsApplyCoreTransform(workspace);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+    // ===== fim HS_UPDATE_027_RESTORE_WINDOWS =====
+
+
+
     private void hsRefreshCoreTargetAfterLayout() {
         try {
             getWindow().getDecorView().postDelayed(() -> {
                 try {
                     hsCoreIsolatedTarget = null;
+                    hsRestoreWindowVisibilitySafe();
                     android.view.View workspace = hsFindWorkspaceTarget();
                     if (workspace != null) {
                         hsApplyCoreTransform(workspace);
                     }
-                    hsApplyAddSlotVisibility();
+                    hsRestoreWindowVisibilitySafe();
                 } catch (Exception ignored) {
                 }
             }, 350);
         } catch (Exception ignored) {
         }
     }
+
 
 
 
@@ -119,10 +182,10 @@ public class MainActivity extends Activity {
             if (hsContainsText(group, "Adicionar janela")) score += 45;
 
             if (hsContainsText(group, "Home") && hsContainsText(group, "Favorites") && hsContainsText(group, "Browser")) score -= 180;
-            if (hsContainsText(group, "Hub View") || hsContainsText(group, "Groups") || hsContainsText(group, "Grid View")) score -= 140;
+            if (hsContainsText(group, "Hub View") || hsContainsText(group, "Groups") || hsContainsText(group, "Grid View")) score -= 260;
             if (hsContainsText(group, "Escolha um grupo para abrir o workspace")) score -= 140;
-            if (hsContainsText(group, "Janelas abertas")) score -= 200;
-            if (hsContainsText(group, "Navegador HubSyncBr")) score -= 200;
+            if (hsContainsText(group, "Janelas abertas")) score -= 500;
+            if (hsContainsText(group, "Navegador HubSyncBr")) score -= 500;
 
             long area = (long) w * (long) h;
             score += (int) Math.min(80, area / 60000L);
@@ -316,10 +379,11 @@ public class MainActivity extends Activity {
             workspace.setScaleY(hsCoreScaleFree);
             workspace.setTranslationX(hsCoreOffsetXFree);
             workspace.setTranslationY(hsCoreOffsetYFree);
-            workspace.bringToFront();
+            hsRestoreWindowVisibilitySafe();
         } catch (Exception ignored) {
         }
     }
+
 
 
     private android.view.View hsFindWorkspaceTarget() {
@@ -412,53 +476,40 @@ public class MainActivity extends Activity {
 
     private void hsApplyAddSlotVisibility() {
         try {
-            android.view.View root = getWindow().getDecorView();
-            boolean hasWindow = hsHasAnyWindow();
-            hsApplyAddSlotVisibilityRecursive(root, hasWindow);
+            hsRestoreWindowVisibilitySafe();
         } catch (Exception ignored) {
         }
     }
 
+
     private void hsApplyAddSlotVisibilityRecursive(android.view.View view, boolean hasWindow) {
-        if (view == null) return;
         try {
-            if (view instanceof android.view.ViewGroup) {
-                android.view.ViewGroup group = (android.view.ViewGroup) view;
-                boolean isAddSlot = hsContainsText(group, "Nova janela")
-                        && !hsContainsText(group, "Hub View")
-                        && !hsContainsText(group, "HubSyncBr")
-                        && group.getWidth() > 80
-                        && group.getHeight() > 80;
-
-                if (isAddSlot && hasWindow) {
-                    group.setVisibility(hsCoreSlotsVisible ? android.view.View.VISIBLE : android.view.View.GONE);
-                    return;
-                }
-
-                for (int i = 0; i < group.getChildCount(); i++) {
-                    hsApplyAddSlotVisibilityRecursive(group.getChildAt(i), hasWindow);
-                }
+            // UPDATE 027: desativado temporariamente para evitar esconder a camada das janelas.
+            // O controle fino dos slots + volta depois, com alvo de slot específico.
+            if (view != null) {
+                hsRestoreWindowVisibilityRecursive(view);
             }
         } catch (Exception ignored) {
         }
     }
+
     // ===== fim HS_UPDATE_024_FREE_CORE =====
 
 
     private void rebuildAllWindows() {
-        // Stub seguro criado pela 0.7.5.2 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.3 para compatibilidade entre versoes.
     }
 
     private void renderWindows() {
-        // Stub seguro criado pela 0.7.5.2 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.3 para compatibilidade entre versoes.
     }
 
     private void refreshWindows() {
-        // Stub seguro criado pela 0.7.5.2 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.3 para compatibilidade entre versoes.
     }
 
 
-    // ===== HubSyncBr 0.7.5.2 - Expanded Core Workspace =====
+    // ===== HubSyncBr 0.7.5.3 - Expanded Core Workspace =====
     private static final int CORE_MODE_COMPACT = 0;
     private static final int CORE_MODE_WIDE = 1;
     private static final int CORE_MODE_DESKTOP = 2;
@@ -579,7 +630,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
+        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hsResetCoreTransformWithoutToast(), 700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
         WebView.setWebContentsDebuggingEnabled(false);
         configureWindow();
         buildUi();
