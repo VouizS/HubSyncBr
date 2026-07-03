@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 10
-        versionName '0.7.5.3-restore-windows-safe-core'
+        versionName '0.7.5.4-slots-toggle-scroll-guard'
     }
 
     buildTypes {

@@ -46,6 +46,97 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    // ===== HS_UPDATE_028_SLOTS_TOGGLE_SCROLL_GUARD =====
+    private boolean hsInternalAddSlotsVisible = true;
+
+    private void hsToggleInternalAddSlots() {
+        try {
+            hsInternalAddSlotsVisible = !hsInternalAddSlotsVisible;
+            hsApplyAddSlotVisibility();
+            String msg = hsInternalAddSlotsVisible ? "Slots + internos visíveis" : "Slots + internos ocultos";
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show();
+        } catch (Exception ignored) {}
+    }
+
+    private void hsBindTopbarPlusToggleSafe() {
+        try { hsBindTopbarPlusToggleRecursive(getWindow().getDecorView()); } catch (Exception ignored) {}
+    }
+
+    private void hsBindTopbarPlusToggleRecursive(android.view.View view) {
+        if (view == null) return;
+        try {
+            if (view instanceof android.widget.TextView) {
+                android.widget.TextView tv = (android.widget.TextView) view;
+                CharSequence cs = tv.getText();
+                String text = cs == null ? "" : cs.toString().trim();
+                if ("+".equals(text) || "＋".equals(text)) {
+                    android.graphics.Rect r = new android.graphics.Rect();
+                    tv.getGlobalVisibleRect(r);
+                    if (r.top < dp(140)) {
+                        tv.setLongClickable(true);
+                        tv.setOnLongClickListener(v -> { hsToggleInternalAddSlots(); return true; });
+                    }
+                }
+            }
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup g = (android.view.ViewGroup) view;
+                for (int i = 0; i < g.getChildCount(); i++) hsBindTopbarPlusToggleRecursive(g.getChildAt(i));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private boolean hsIsWindowLabelContainer(android.view.ViewGroup group) {
+        try {
+            if (group == null) return false;
+            return hsContainsText(group, "Janela 1") || hsContainsText(group, "Janela 2") ||
+                   hsContainsText(group, "Janela 3") || hsContainsText(group, "Janela 4") ||
+                   hsContainsText(group, "Janela 5") || hsContainsText(group, "Janela 6") ||
+                   hsContainsText(group, "Janela 7");
+        } catch (Exception e) { return false; }
+    }
+
+    private boolean hsIsInternalAddSlotCandidate(android.view.ViewGroup group) {
+        try {
+            if (group == null) return false;
+            if (!hsContainsText(group, "Nova janela")) return false;
+            if (hsContainsText(group, "Adicionar janela")) return false; // tela vazia principal fica visível
+            if (hsIsWindowLabelContainer(group)) return false;
+            if (hsContainsText(group, "Janelas abertas")) return false;
+            if (hsLooksLikeFixedShell(group)) return false;
+            android.graphics.Rect r = new android.graphics.Rect();
+            group.getGlobalVisibleRect(r);
+            if (r.top < dp(120)) return false;
+            return true;
+        } catch (Exception e) { return false; }
+    }
+
+    private void hsSetInternalAddSlotsVisibleRecursive(android.view.View view, boolean visible) {
+        if (view == null) return;
+        try {
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+                if (hsIsInternalAddSlotCandidate(group)) {
+                    group.setVisibility(visible ? android.view.View.VISIBLE : android.view.View.GONE);
+                    group.setAlpha(visible ? 1.0f : 0.0f);
+                    return;
+                }
+                for (int i = 0; i < group.getChildCount(); i++) hsSetInternalAddSlotsVisibleRecursive(group.getChildAt(i), visible);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void hsApplyInternalAddSlotsVisibilitySafe() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            if (hsInternalAddSlotsVisible) hsRestoreWindowVisibilitySafe();
+            hsSetInternalAddSlotsVisibleRecursive(root, hsInternalAddSlotsVisible);
+            hsRestoreWindowVisibilitySafe();
+        } catch (Exception ignored) {}
+    }
+    // ===== fim HS_UPDATE_028_SLOTS_TOGGLE_SCROLL_GUARD =====
+
+
+
     // ===== HS_UPDATE_027_RESTORE_WINDOWS =====
     private void hsRestoreWindowVisibilitySafe() {
         try {
@@ -118,6 +209,7 @@ public class MainActivity extends Activity {
                         hsApplyCoreTransform(workspace);
                     }
                     hsRestoreWindowVisibilitySafe();
+                    hsBindTopbarPlusToggleSafe();
                 } catch (Exception ignored) {
                 }
             }, 350);
@@ -256,9 +348,22 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        if (hsHandleFreeCoreGesture(ev)) return true;
+        try {
+            if (ev != null) {
+                int pointers = ev.getPointerCount();
+                if (pointers >= 2) {
+                    if (hsHandleFreeCoreGesture(ev)) return true;
+                } else {
+                    int action = ev.getActionMasked();
+                    if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL) {
+                        try { hsHandleFreeCoreGesture(ev); } catch (Exception ignored) {}
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
         return super.dispatchTouchEvent(ev);
     }
+
 
 
 
@@ -475,41 +580,34 @@ public class MainActivity extends Activity {
     }
 
     private void hsApplyAddSlotVisibility() {
-        try {
-            hsRestoreWindowVisibilitySafe();
-        } catch (Exception ignored) {
-        }
+        try { hsApplyInternalAddSlotsVisibilitySafe(); }
+        catch (Exception ignored) { try { hsRestoreWindowVisibilitySafe(); } catch (Exception ignored2) {} }
     }
+
 
 
     private void hsApplyAddSlotVisibilityRecursive(android.view.View view, boolean hasWindow) {
-        try {
-            // UPDATE 027: desativado temporariamente para evitar esconder a camada das janelas.
-            // O controle fino dos slots + volta depois, com alvo de slot específico.
-            if (view != null) {
-                hsRestoreWindowVisibilityRecursive(view);
-            }
-        } catch (Exception ignored) {
-        }
+        try { hsApplyInternalAddSlotsVisibilitySafe(); } catch (Exception ignored) {}
     }
+
 
     // ===== fim HS_UPDATE_024_FREE_CORE =====
 
 
     private void rebuildAllWindows() {
-        // Stub seguro criado pela 0.7.5.3 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.4 para compatibilidade entre versoes.
     }
 
     private void renderWindows() {
-        // Stub seguro criado pela 0.7.5.3 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.4 para compatibilidade entre versoes.
     }
 
     private void refreshWindows() {
-        // Stub seguro criado pela 0.7.5.3 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.4 para compatibilidade entre versoes.
     }
 
 
-    // ===== HubSyncBr 0.7.5.3 - Expanded Core Workspace =====
+    // ===== HubSyncBr 0.7.5.4 - Expanded Core Workspace =====
     private static final int CORE_MODE_COMPACT = 0;
     private static final int CORE_MODE_WIDE = 1;
     private static final int CORE_MODE_DESKTOP = 2;
@@ -630,7 +728,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hsResetCoreTransformWithoutToast(), 700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
+        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hsBindTopbarPlusToggleSafe(), 1200); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsResetCoreTransformWithoutToast(), 700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
         WebView.setWebContentsDebuggingEnabled(false);
         configureWindow();
         buildUi();
