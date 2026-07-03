@@ -46,6 +46,145 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    // ===== HS_UPDATE_032_MULTIWINDOW_PLAYBACK_PERFORMANCE =====
+    private final java.util.WeakHashMap<android.webkit.WebView, Boolean> hsTunedWebViews = new java.util.WeakHashMap<>();
+    private long hsLastWebViewPerformanceTuneMs = 0L;
+    private boolean hsPerformanceLayoutWatcherInstalled = false;
+
+    private void hsInstallMultiWindowPerformanceMode() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            if (root == null) return;
+
+            if (!hsPerformanceLayoutWatcherInstalled) {
+                hsPerformanceLayoutWatcherInstalled = true;
+                root.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                    try {
+                        hsScheduleWebViewPerformanceTune();
+                    } catch (Exception ignored) {
+                    }
+                });
+            }
+
+            hsScheduleWebViewPerformanceTune();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hsScheduleWebViewPerformanceTune() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            if (root == null) return;
+
+            root.postDelayed(() -> hsTuneAllWebViewsForPlayback(), 120);
+            root.postDelayed(() -> hsTuneAllWebViewsForPlayback(), 650);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hsTuneAllWebViewsForPlayback() {
+        try {
+            long now = android.os.SystemClock.uptimeMillis();
+
+            // Evita varrer toda a tela repetidamente enquanto o usuario abre/rola janelas.
+            if (now - hsLastWebViewPerformanceTuneMs < 520L) return;
+            hsLastWebViewPerformanceTuneMs = now;
+
+            android.view.View root = getWindow().getDecorView();
+            hsTuneWebViewsRecursive(root);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hsTuneWebViewsRecursive(android.view.View view) {
+        if (view == null) return;
+
+        try {
+            if (view instanceof android.webkit.WebView) {
+                hsTuneSingleWebViewForPlayback((android.webkit.WebView) view);
+                return;
+            }
+
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    hsTuneWebViewsRecursive(group.getChildAt(i));
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hsTuneSingleWebViewForPlayback(android.webkit.WebView webView) {
+        if (webView == null) return;
+
+        try {
+            Boolean alreadyTuned = hsTunedWebViews.get(webView);
+            if (alreadyTuned != null && alreadyTuned.booleanValue()) {
+                return;
+            }
+
+            hsTunedWebViews.put(webView, Boolean.TRUE);
+
+            // Renderização: usa GPU quando disponível.
+            try {
+                webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
+            } catch (Exception ignored) {
+            }
+
+            try {
+                webView.setKeepScreenOn(true);
+            } catch (Exception ignored) {
+            }
+
+            try {
+                webView.setFocusable(true);
+                webView.setFocusableInTouchMode(true);
+            } catch (Exception ignored) {
+            }
+
+            try {
+                webView.setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);
+            } catch (Exception ignored) {
+            }
+
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= 26) {
+                    webView.setRendererPriorityPolicy(android.webkit.WebView.RENDERER_PRIORITY_IMPORTANT, true);
+                }
+            } catch (Exception ignored) {
+            }
+
+            try {
+                android.webkit.WebSettings settings = webView.getSettings();
+                if (settings != null) {
+                    settings.setJavaScriptEnabled(true);
+                    settings.setDomStorageEnabled(true);
+                    settings.setDatabaseEnabled(true);
+                    settings.setLoadsImagesAutomatically(true);
+                    settings.setBlockNetworkImage(false);
+                    settings.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+                    settings.setMediaPlaybackRequiresUserGesture(false);
+                    settings.setAllowFileAccess(true);
+                    settings.setAllowContentAccess(true);
+
+                    if (android.os.Build.VERSION.SDK_INT >= 21) {
+                        settings.setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+                    }
+
+                    if (android.os.Build.VERSION.SDK_INT >= 23) {
+                        settings.setOffscreenPreRaster(false);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        } catch (Exception ignored) {
+        }
+    }
+    // ===== fim HS_UPDATE_032_MULTIWINDOW_PLAYBACK_PERFORMANCE =====
+
+
+
     // ===== HS_UPDATE_031_FAST_OPEN_OPTIMIZATION =====
     private long hsLastVisibilityRestoreMs = 0L;
     private long hsLastCoreTransformMs = 0L;
@@ -723,19 +862,19 @@ public class MainActivity extends Activity {
 
 
     private void rebuildAllWindows() {
-        // Stub seguro criado pela 0.7.5.7 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.8 para compatibilidade entre versoes.
     }
 
     private void renderWindows() {
-        // Stub seguro criado pela 0.7.5.7 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.8 para compatibilidade entre versoes.
     }
 
     private void refreshWindows() {
-        // Stub seguro criado pela 0.7.5.7 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5.8 para compatibilidade entre versoes.
     }
 
 
-    // ===== HubSyncBr 0.7.5.7 - Expanded Core Workspace =====
+    // ===== HubSyncBr 0.7.5.8 - Expanded Core Workspace =====
     private static final int CORE_MODE_COMPACT = 0;
     private static final int CORE_MODE_WIDE = 1;
     private static final int CORE_MODE_DESKTOP = 2;
@@ -856,7 +995,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hsScheduleForceHideInternalPlusSlots(), 1700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsBindTopbarPlusToggleSafe(), 1200); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsResetCoreTransformWithoutToast(), 700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
+        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hsInstallMultiWindowPerformanceMode(), 900); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsScheduleForceHideInternalPlusSlots(), 1700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsBindTopbarPlusToggleSafe(), 1200); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsResetCoreTransformWithoutToast(), 700); } catch (Exception ignored) {} try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
         WebView.setWebContentsDebuggingEnabled(false);
         configureWindow();
         buildUi();
