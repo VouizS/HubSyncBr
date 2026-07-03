@@ -43,20 +43,263 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        if (hsHandleFreeCoreGesture(ev)) return true;
+        return super.dispatchTouchEvent(ev);
+    }
+
+
+
+    // ===== HS_UPDATE_024_FREE_CORE =====
+    private float hsCoreScaleFree = 1.0f;
+    private float hsCoreOffsetXFree = 0.0f;
+    private float hsCoreOffsetYFree = 0.0f;
+    private float hsCoreLastFocusX = 0.0f;
+    private float hsCoreLastFocusY = 0.0f;
+    private float hsCoreLastDistance = 0.0f;
+    private boolean hsCoreGestureActive = false;
+    private boolean hsCoreSlotsVisible = false;
+    private android.view.View hsCoreWorkspaceTarget = null;
+
+    private String hsGoogleHomeUrl() {
+        return "https://www.google.com/";
+    }
+
+    private String hsNormalizeUrl(String raw) {
+        try {
+            if (raw == null) return hsGoogleHomeUrl();
+            String input = raw.trim();
+            if (input.length() == 0) return hsGoogleHomeUrl();
+
+            String lower = input.toLowerCase(java.util.Locale.ROOT);
+            if (lower.startsWith("data:") || lower.startsWith("file:") || lower.startsWith("content:")
+                    || lower.startsWith("about:") || lower.startsWith("javascript:")
+                    || lower.startsWith("blob:")) {
+                return input;
+            }
+
+            if (lower.matches("^[a-z][a-z0-9+.-]*://.*")) return input;
+            if (lower.startsWith("www.")) return "https://" + input;
+
+            boolean looksLikeDomain = input.indexOf(' ') < 0 && input.indexOf('.') > 0 && !input.endsWith(".");
+            if (looksLikeDomain) return "https://" + input;
+
+            return "https://www.google.com/search?q=" + java.net.URLEncoder.encode(input, "UTF-8");
+        } catch (Exception e) {
+            return "https://www.google.com/search?q=" + String.valueOf(raw);
+        }
+    }
+
+    private boolean hsHandleFreeCoreGesture(android.view.MotionEvent ev) {
+        try {
+            if (ev == null) return false;
+            int count = ev.getPointerCount();
+
+            if (count < 2) {
+                if (hsCoreGestureActive) {
+                    hsCoreGestureActive = false;
+                    hsApplyAddSlotVisibility();
+                }
+                return false;
+            }
+
+            float x0 = ev.getX(0);
+            float y0 = ev.getY(0);
+            float x1 = ev.getX(1);
+            float y1 = ev.getY(1);
+            float focusX = (x0 + x1) / 2.0f;
+            float focusY = (y0 + y1) / 2.0f;
+            float dx = x1 - x0;
+            float dy = y1 - y0;
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+            if (distance < 16.0f) return true;
+
+            android.view.View workspace = hsFindWorkspaceTarget();
+            if (workspace == null) return false;
+
+            int action = ev.getActionMasked();
+            if (!hsCoreGestureActive || action == android.view.MotionEvent.ACTION_POINTER_DOWN) {
+                hsCoreGestureActive = true;
+                hsCoreWorkspaceTarget = workspace;
+                hsCoreLastFocusX = focusX;
+                hsCoreLastFocusY = focusY;
+                hsCoreLastDistance = distance;
+                return true;
+            }
+
+            float panX = focusX - hsCoreLastFocusX;
+            float panY = focusY - hsCoreLastFocusY;
+            float scaleDelta = distance / Math.max(1.0f, hsCoreLastDistance);
+
+            hsCoreScaleFree = hsClamp(hsCoreScaleFree * scaleDelta, 0.55f, 1.60f);
+            hsCoreOffsetXFree = hsClamp(hsCoreOffsetXFree + panX, -900.0f, 900.0f);
+            hsCoreOffsetYFree = hsClamp(hsCoreOffsetYFree + panY, -1200.0f, 1200.0f);
+
+            hsCoreLastFocusX = focusX;
+            hsCoreLastFocusY = focusY;
+            hsCoreLastDistance = distance;
+
+            hsApplyCoreTransform(workspace);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private float hsClamp(float value, float min, float max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private void hsApplyCoreTransform(android.view.View workspace) {
+        try {
+            if (workspace == null) return;
+            workspace.setPivotX(workspace.getWidth() / 2.0f);
+            workspace.setPivotY(workspace.getHeight() / 2.0f);
+            workspace.setScaleX(hsCoreScaleFree);
+            workspace.setScaleY(hsCoreScaleFree);
+            workspace.setTranslationX(hsCoreOffsetXFree);
+            workspace.setTranslationY(hsCoreOffsetYFree);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private android.view.View hsFindWorkspaceTarget() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            android.view.View found = hsFindWorkspaceTargetRecursive(root, null);
+            if (found != null) {
+                hsCoreWorkspaceTarget = found;
+                return found;
+            }
+            return hsCoreWorkspaceTarget;
+        } catch (Exception e) {
+            return hsCoreWorkspaceTarget;
+        }
+    }
+
+    private android.view.View hsFindWorkspaceTargetRecursive(android.view.View view, android.view.View best) {
+        if (view == null) return best;
+
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            boolean hasWindowText = hsContainsText(group, "Janela") || hsContainsText(group, "Nova janela") || hsContainsText(group, "Adicionar janela");
+            boolean looksSidebar = hsContainsText(group, "Multi Screen") && hsContainsText(group, "Settings");
+            boolean looksDialog = hsContainsText(group, "Janelas abertas") || hsContainsText(group, "Navegador HubSyncBr");
+
+            if (hasWindowText && !looksSidebar && !looksDialog && group.getWidth() > 160 && group.getHeight() > 160) {
+                if (best == null) {
+                    best = group;
+                } else {
+                    long area = (long) group.getWidth() * (long) group.getHeight();
+                    long bestArea = (long) best.getWidth() * (long) best.getHeight();
+                    if (area > bestArea) best = group;
+                }
+            }
+
+            for (int i = 0; i < group.getChildCount(); i++) {
+                best = hsFindWorkspaceTargetRecursive(group.getChildAt(i), best);
+            }
+        }
+
+        return best;
+    }
+
+    private boolean hsContainsText(android.view.View view, String needle) {
+        if (view == null || needle == null) return false;
+        try {
+            if (view instanceof android.widget.TextView) {
+                CharSequence txt = ((android.widget.TextView) view).getText();
+                if (txt != null && txt.toString().contains(needle)) return true;
+            }
+
+            CharSequence cd = view.getContentDescription();
+            if (cd != null && cd.toString().contains(needle)) return true;
+
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    if (hsContainsText(group.getChildAt(i), needle)) return true;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
+
+    private boolean hsHasAnyWindow() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            return hsContainsText(root, "Janela 1") || hsContainsText(root, "Janela 2")
+                    || hsContainsText(root, "Janela 3") || hsContainsText(root, "Janela 4")
+                    || hsContainsText(root, "Janela 5") || hsContainsText(root, "Janela 6")
+                    || hsContainsText(root, "Janela 7");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void hsToggleCoreAddSlots() {
+        hsCoreSlotsVisible = !hsCoreSlotsVisible;
+        hsApplyAddSlotVisibility();
+        try {
+            android.widget.Toast.makeText(this,
+                    hsCoreSlotsVisible ? "+ do núcleo ativado" : "+ do núcleo oculto",
+                    android.widget.Toast.LENGTH_SHORT).show();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hsApplyAddSlotVisibility() {
+        try {
+            android.view.View root = getWindow().getDecorView();
+            boolean hasWindow = hsHasAnyWindow();
+            hsApplyAddSlotVisibilityRecursive(root, hasWindow);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void hsApplyAddSlotVisibilityRecursive(android.view.View view, boolean hasWindow) {
+        if (view == null) return;
+        try {
+            if (view instanceof android.view.ViewGroup) {
+                android.view.ViewGroup group = (android.view.ViewGroup) view;
+                boolean isAddSlot = hsContainsText(group, "Nova janela")
+                        && !hsContainsText(group, "Hub View")
+                        && !hsContainsText(group, "HubSyncBr")
+                        && group.getWidth() > 80
+                        && group.getHeight() > 80;
+
+                if (isAddSlot && hasWindow) {
+                    group.setVisibility(hsCoreSlotsVisible ? android.view.View.VISIBLE : android.view.View.GONE);
+                    return;
+                }
+
+                for (int i = 0; i < group.getChildCount(); i++) {
+                    hsApplyAddSlotVisibilityRecursive(group.getChildAt(i), hasWindow);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+    // ===== fim HS_UPDATE_024_FREE_CORE =====
+
+
     private void rebuildAllWindows() {
-        // Stub seguro criado pela 0.7.4 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5 para compatibilidade entre versoes.
     }
 
     private void renderWindows() {
-        // Stub seguro criado pela 0.7.4 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5 para compatibilidade entre versoes.
     }
 
     private void refreshWindows() {
-        // Stub seguro criado pela 0.7.4 para compatibilidade entre versoes.
+        // Stub seguro criado pela 0.7.5 para compatibilidade entre versoes.
     }
 
 
-    // ===== HubSyncBr 0.7.4 - Expanded Core Workspace =====
+    // ===== HubSyncBr 0.7.5 - Expanded Core Workspace =====
     private static final int CORE_MODE_COMPACT = 0;
     private static final int CORE_MODE_WIDE = 1;
     private static final int CORE_MODE_DESKTOP = 2;
@@ -177,7 +420,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        super.onCreate(savedInstanceState); try { getWindow().getDecorView().postDelayed(() -> hsApplyAddSlotVisibility(), 900); } catch (Exception ignored) {}
         WebView.setWebContentsDebuggingEnabled(false);
         configureWindow();
         buildUi();
@@ -223,7 +466,7 @@ public class MainActivity extends Activity {
         emptyState = createEmptyState();
 
         activeGroup = createGroup("Meu Hub"); webGroup = activeGroup;
-        StreamPane a = createPane("Hub Home", getHomepageUrl(), PURPLE);
+        StreamPane a = createPane("Hub Home", hsGoogleHomeUrl(), PURPLE);
         a.loadDefault();
         showPane(a);
 
@@ -562,7 +805,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         }
 
         String paneName = mediaWorkspaceMode ? "Media Hub" : "Hub Home";
-        String paneUrl = mediaWorkspaceMode ? mediaHubDataUrl() : getHomepageUrl();
+        String paneUrl = mediaWorkspaceMode ? mediaHubDataUrl() : hsGoogleHomeUrl();
 
         StreamPane pane = createPane(paneName, paneUrl, accentForIndex(panes.size()));
         if (mediaWorkspaceMode) pane.setMediaMode(true);
@@ -1163,21 +1406,10 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
         return getSharedPreferences("hub", MODE_PRIVATE);
     }
 
-    private String getHomepageUrl() {
-        SharedPreferences prefs = hubPrefs();
-        String mode = prefs.getString("homepage_mode", "hub");
-        if ("blank".equals(mode)) return "about:blank";
-        if ("google".equals(mode)) return "https://www.google.com";
-        if ("custom".equals(mode)) {
-            String custom = prefs.getString("custom_homepage", "https://www.google.com");
-            if (custom == null || custom.trim().isEmpty()) return MainActivity.HUBSYNCBR_HOME_DATA_URL;
-            String c = custom.trim();
-            if (c.startsWith("http://") || c.startsWith("https://")) return c;
-            if (c.contains(".")) return "https://" + c;
-            return searchUrl(c);
-        }
-        return MainActivity.HUBSYNCBR_HOME_DATA_URL;
+    private String hsGoogleHomeUrl() {
+        return hsGoogleHomeUrl();
     }
+
 
     private String searchUrl(String query) {
         String q = query == null ? "" : query.trim();
@@ -1220,10 +1452,10 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
     }
 
     private String normalizeUrl(String raw) {
-        if (raw == null || raw.trim().isEmpty()) return getHomepageUrl();
+        if (raw == null || raw.trim().isEmpty()) return hsGoogleHomeUrl();
         String u = raw.trim();
         if (u.equals("about:blank")) return u;
-        if (u.equals("hubsyncbr://home")) return getHomepageUrl(); if (u.equals("hubsyncbr://media")) return mediaHubDataUrl();
+        if (u.equals("hubsyncbr://home")) return hsGoogleHomeUrl(); if (u.equals("hubsyncbr://media")) return mediaHubDataUrl();
         if (u.startsWith("data:")) return u;
         if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("file://")) return u;
         boolean looksLikeUrl = u.contains(".") && !u.contains(" ");
@@ -1573,7 +1805,7 @@ box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
             String u = normalizeUrl(raw);
             urlBar.setText(u);
             if (toolbar != null) toolbar.setVisibility(View.VISIBLE);
-            webView.loadUrl(u);
+            webView.loadUrl(hsNormalizeUrl(u));
         }
 
         String currentUrl() {
