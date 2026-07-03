@@ -179,7 +179,7 @@ logo.setPadding(dp(8), 0, dp(8), 0);
         side.addView(navButton("Multi Screen", R.drawable.ic_hs_grid, false, v -> { if (focusMode) exitFocus(); enterGroup(activeGroup); }));
         side.addView(navButton("Favorites", R.drawable.ic_hs_heart, false, v -> Toast.makeText(this, "Favoritos entram depois", Toast.LENGTH_SHORT).show()));
         side.addView(navButton("Sports", R.drawable.ic_hs_sports, false, v -> Toast.makeText(this, "Modo esportes entra depois", Toast.LENGTH_SHORT).show()));
-        side.addView(navButton("Media Hub", R.drawable.ic_hs_browser, false, v -> openMediaHubWindow())); side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> { if (groupOverviewMode) enterGroup(activeGroup); addWindow(); }));
+        side.addView(navButton("Media Hub", R.drawable.ic_hs_media, false, v -> openMediaHubWindow())); side.addView(navButton("Browser", R.drawable.ic_hs_browser, false, v -> { if (groupOverviewMode) enterGroup(activeGroup); addWindow(); }));
         side.addView(navButton("Settings", R.drawable.ic_hs_settings, false, v -> showAboutDialog()));
 
         View flex = new View(this);
